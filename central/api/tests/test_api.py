@@ -142,6 +142,11 @@ def test_day_view_averages_into_five_minute_points(client):
     assert points[0]["battery_pct"] == 90
 
 
+def test_buckets_keep_errors_that_cleared_before_they_end(client):
+    points = client.get("/api/v1/robots/rv-err/telemetry", params={"period": "day"}).json()["points"]
+    assert points[-1]["error"] == "bumper_hit"
+
+
 def test_custom_range_gets_a_bucket_too(client):
     now = datetime.now(UTC)
     t = telemetry(client, **{"from": (now - timedelta(hours=3)).isoformat(), "to": now.isoformat()})

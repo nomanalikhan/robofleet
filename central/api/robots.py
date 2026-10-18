@@ -69,7 +69,7 @@ async def get_telemetry(
             SELECT time_bucket($4 * INTERVAL '1 second', ts) AS ts,
                    avg(battery_pct) AS battery_pct,
                    last(state, ts) AS state,
-                   last(error, ts) AS error,
+                   last(error, ts) FILTER (WHERE error IS NOT NULL) AS error,
                    avg(x_m) AS x_m,
                    avg(y_m) AS y_m
             FROM robot_telemetry

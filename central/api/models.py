@@ -44,8 +44,8 @@ class RobotPage(BaseModel):
 class TelemetryPoint(BaseModel):
     ts: datetime
     battery_pct: float
-    state: State
-    error: Error | None
+    state: State  # for buckets, the last state in the bucket
+    error: Error | None  # for buckets, the last error anywhere in the bucket, so short faults still show
     x_m: float
     y_m: float
 
