@@ -63,6 +63,12 @@ class Store:
             SELECT id, ip
             FROM robots
         """))
+        # Kept in step with every insert and delete, so a backlog of millions
+        # is never recounted on each batch.
+        self.waiting = self.db.execute("""
+            SELECT count(*)
+            FROM robot_telemetry
+        """).fetchone()[0]
 
     def register(self, robot_id: str, vendor: str, ip: str | None = None) -> bool:
         """Record a discovered robot. Returns True the first time it is seen.
@@ -116,6 +122,7 @@ class Store:
                 SET last_seen = max(last_seen, ?)
                 WHERE id = ?
             """, [(t, rid) for rid, t in last_seen.items()])
+        self.waiting += inserted
         return inserted
 
     def unsent(self, limit: int) -> list[dict]:
@@ -133,15 +140,13 @@ class Store:
     def backlog(self, skip: int = 0) -> tuple[int, int | None]:
         """How many readings wait for delivery beyond the oldest `skip`, and
         when the oldest of those arrived."""
-        return self.db.execute("""
-            SELECT count(*), min(received_ms)
-            FROM (
-                SELECT received_ms
-                FROM robot_telemetry
-                ORDER BY received_ms
-                LIMIT -1 OFFSET ?
-            )
+        oldest = self.db.execute("""
+            SELECT received_ms
+            FROM robot_telemetry
+            ORDER BY received_ms
+            LIMIT 1 OFFSET ?
         """, (skip,)).fetchone()
+        return max(self.waiting - skip, 0), oldest and oldest[0]
 
     def robots(self) -> list[dict]:
         cur = self.db.execute("""
@@ -155,16 +160,18 @@ class Store:
         """Delete readings central has confirmed. Only these keys, so readings
         that arrived while the batch was in flight stay for the next one."""
         with self.db:
-            self.db.executemany("""
+            self.waiting -= self.db.executemany("""
                 DELETE FROM robot_telemetry
                 WHERE robot_id = ? AND ts_ms = ?
-            """, keys)
+            """, keys).rowcount
 
     def prune(self, retention_hours: float) -> int:
         """Drop undelivered readings older than the cap, so a dead uplink cannot
         fill the disk. Normally deletes nothing."""
         with self.db:
-            return self.db.execute("""
+            dropped = self.db.execute("""
                 DELETE FROM robot_telemetry
                 WHERE received_ms < ?
             """, (now_ms() - int(retention_hours * 3_600_000),)).rowcount
+        self.waiting -= dropped
+        return dropped

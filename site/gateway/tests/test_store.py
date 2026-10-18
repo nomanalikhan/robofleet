@@ -66,6 +66,14 @@ def test_backlog_counts_waiting_readings(store):
     assert store.backlog(skip=1) == (1, 700)
 
 
+def test_backlog_count_survives_a_restart(tmp_path):
+    first = Store(str(tmp_path / "g.db"))
+    first.register("rv-1", "rovo")
+    first.add(BASE)
+    first.flush()
+    assert Store(str(tmp_path / "g.db")).backlog() == (1, 1000)
+
+
 def test_prune_drops_only_readings_past_the_cap(store):
     now = now_ms()
     store.add(replace(BASE, ts_ms=1, received_ms=now - 25 * 3_600_000))  # waited 25h
