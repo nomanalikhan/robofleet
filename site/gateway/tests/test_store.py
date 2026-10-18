@@ -19,37 +19,11 @@ def store():
     return s
 
 
-def count(store, unsent_only=False):
+def count(store):
     return store.db.execute("""
         SELECT count(*)
         FROM robot_telemetry
-        WHERE uploaded = 0 OR NOT ?
-    """, (unsent_only,)).fetchone()[0]
-
-
-def latest_battery(store):
-    [(battery,)] = store.db.execute("""
-        SELECT battery_pct
-        FROM latest
-        WHERE robot_id = 'rv-1'
-    """)
-    return battery
-
-
-def test_late_reading_goes_to_history_but_not_latest(store):
-    store.add(replace(BASE, ts_ms=2000, battery_pct=70))
-    store.flush()
-    store.add(replace(BASE, ts_ms=1000, battery_pct=80))  # arrives late
-    store.flush()
-    assert latest_battery(store) == 70
-    assert count(store) == 2
-
-
-def test_out_of_order_within_one_batch(store):
-    store.add(replace(BASE, ts_ms=3000, battery_pct=60))
-    store.add(replace(BASE, ts_ms=2000, battery_pct=70))
-    store.flush()
-    assert latest_battery(store) == 60
+    """).fetchone()[0]
 
 
 def test_same_reading_twice_is_stored_once(store):
@@ -67,38 +41,37 @@ def test_readings_need_a_registered_robot(store):
         store.flush()
 
 
-def test_prune_keeps_each_robots_newest_reading(store):
-    store.add(replace(BASE, ts_ms=1000, received_ms=1000))
-    store.add(replace(BASE, ts_ms=2000, received_ms=2000, battery_pct=70))
+def test_unsent_is_oldest_arrival_first_and_capped(store):
+    store.add(replace(BASE, ts_ms=3000, received_ms=30))
+    store.add(replace(BASE, ts_ms=1000, received_ms=10))  # measured earlier, arrived first
+    store.add(replace(BASE, ts_ms=2000, received_ms=20))
     store.flush()
-    assert store.prune(uploaded_keep_s=0, retention_hours=0) == 1  # all old, the newest survives
-    assert latest_battery(store) == 70
-    assert count(store) == 1
+    assert [r["ts_ms"] for r in store.unsent(limit=2)] == [1000, 2000]
 
 
-def test_unsent_history_waits_for_upload(store):
+def test_delivered_deletes_only_the_confirmed_keys(store):
+    store.add(replace(BASE, ts_ms=1000))
+    store.add(replace(BASE, ts_ms=2000))
+    store.flush()
+    store.delivered([("rv-1", 1000)])
+    assert [r["ts_ms"] for r in store.unsent(limit=10)] == [2000]
+
+
+def test_backlog_counts_waiting_readings(store):
+    assert store.backlog() == (0, None)
+    store.add(replace(BASE, ts_ms=1000, received_ms=500))
+    store.add(replace(BASE, ts_ms=2000, received_ms=700))
+    store.flush()
+    assert store.backlog() == (2, 500)
+
+
+def test_prune_drops_only_readings_past_the_cap(store):
     now = now_ms()
-    for i in range(3):
-        store.add(replace(BASE, ts_ms=now - 5000 + i, received_ms=now - 5000 + i))  # arrived 5s ago
+    store.add(replace(BASE, ts_ms=1, received_ms=now - 25 * 3_600_000))  # waited 25h
+    store.add(replace(BASE, ts_ms=2, received_ms=now))
     store.flush()
-    assert count(store, unsent_only=True) == 3  # new rows start unsent
-    assert store.prune(uploaded_keep_s=0, retention_hours=24) == 0  # nothing confirmed yet
-    store.db.execute("""
-        UPDATE robot_telemetry
-        SET uploaded = 1
-    """)
-    assert store.prune(uploaded_keep_s=0, retention_hours=24) == 2  # confirmed, newest kept
-
-
-def test_unsent_lookup_uses_the_partial_index(store):
-    plan = store.db.execute("""
-        EXPLAIN QUERY PLAN
-        SELECT *
-        FROM robot_telemetry
-        WHERE uploaded = 0
-        ORDER BY received_ms
-    """).fetchall()
-    assert any("robot_telemetry_unsent" in row[3] for row in plan)
+    assert store.prune(retention_hours=24) == 1
+    assert [r["ts_ms"] for r in store.unsent(limit=10)] == [2]
 
 
 def test_register_reports_first_sighting_only(store):

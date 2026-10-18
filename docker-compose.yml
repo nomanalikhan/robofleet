@@ -3,6 +3,7 @@ name: olivaw
 # Defaults live in botsim's main.go. Compose only passes overrides through.
 x-botsim: &botsim
   image: olivaw/botsim:dev
+  restart: unless-stopped
   build: ./simulator/botsim
   environment: &botsim-env
     CHAOS_ERROR_RATE: ${CHAOS_ERROR_RATE:-}
@@ -10,13 +11,53 @@ x-botsim: &botsim
     CHAOS_DROPOUT_RATE: ${CHAOS_DROPOUT_RATE:-}
     CHAOS_DELAY_RATE: ${CHAOS_DELAY_RATE:-}
 
+configs:
+  # Central broker topology, loaded at boot. The gateway publishes to the fleet
+  # exchange and central ingest will consume central.telemetry.
+  central-rabbitmq-conf:
+    content: |
+      load_definitions = /etc/rabbitmq/definitions.json
+  central-rabbitmq-definitions:
+    content: |
+      {
+        "users": [{"name": "olivaw", "password_hash": "b2xpdlY9CwCFPatk9tpew/XjmFpvmU3VAakdxJ4+jZdNZs3u",
+                   "hashing_algorithm": "rabbit_password_hashing_sha256", "tags": ["administrator"]}],
+        "vhosts": [{"name": "/"}],
+        "permissions": [{"user": "olivaw", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}],
+        "exchanges": [{"name": "fleet", "vhost": "/", "type": "topic", "durable": true,
+                       "auto_delete": false, "internal": false, "arguments": {}}],
+        "queues": [{"name": "central.telemetry", "vhost": "/", "durable": true,
+                    "auto_delete": false, "arguments": {}}],
+        "bindings": [{"source": "fleet", "vhost": "/", "destination": "central.telemetry",
+                      "destination_type": "queue", "routing_key": "site.*.telemetry", "arguments": {}}]
+      }
+
 services:
+  # ---------- central ----------
+  # Demo credentials olivaw/olivaw. Management UI on http://localhost:15672.
+  central-rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    configs:
+      - source: central-rabbitmq-conf
+        target: /etc/rabbitmq/rabbitmq.conf
+      - source: central-rabbitmq-definitions
+        target: /etc/rabbitmq/definitions.json
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
   # ---------- site 1 ----------
   # Service names are <site>-<role>, so containers read like
   # olivaw-site1-bot-cleanix-3. The site-1 software is mosquitto and gateway.
   # The site1-bot-* services stand in for the robots.
   site1-mosquitto:
     image: eclipse-mosquitto:2.0.20
+    restart: unless-stopped
     volumes:
       - ./site/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     ports:
@@ -31,11 +72,13 @@ services:
   # commands come down.
   site1-gateway:
     image: olivaw/gateway:dev
+    restart: unless-stopped
     build: ./site/gateway
     environment:
       SITE_ID: site-1
       MQTT_HOST: site1-mosquitto
       CLEANIX_DISCOVERY: site1-bot-cleanix:8080
+      AMQP_URL: amqp://olivaw:olivaw@central-rabbitmq:5672/
     volumes:
       - site1-gateway-data:/data
     depends_on:

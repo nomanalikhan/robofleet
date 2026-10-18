@@ -5,7 +5,7 @@ Runs on each site and is the only link between the site's robots and central. Ce
 - **Up.** Finds every robot on the local network whatever its vendor, translates each vendor's format into one canonical reading, keeps the history in SQLite and forwards it to central.
 - **Down.** Takes commands from central, routes each to the right robot through its vendor adapter and reports the outcome back.
 
-Built so far is discovery, normalization and local storage. Forwarding to central and executing commands come next.
+Built so far is discovery, normalization, local storage and forwarding to central. Executing commands comes next. The gateway does no analysis of its own. Central decides what counts as a problem.
 
 Every vendor is one adapter in `vendors/`. An adapter knows how to discover that vendor's robots, how to get their data, how to map fields, units and enums and how to send them commands. Two adapters exist today. Their wire formats are in the [botsim README](../../simulator/botsim/README.md#wire-formats).
 
@@ -16,7 +16,31 @@ Every vendor is one adapter in `vendors/`. An adapter knows how to discover that
 
 Resolving a name to find Cleanix robots is a simulation stand-in. Docker DNS returns every replica of the compose service. A real site has no such name, so candidates would come from a subnet scan of the robot network or a static list of addresses. Only `resolve()` in `vendors/cleanix.py` would change, because probing and polling stay the same.
 
-Storage is two tables, `robots` and `robot_telemetry`, plus a `latest` view that returns each robot's newest reading by robot time. A late reading goes into history but never becomes latest. Pruning never removes a robot's newest reading.
+## Forwarding to central
+
+Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with every reading central has not confirmed yet, so all 1 Hz readings and not just the newest. It sends a batch even when empty, so the batch doubles as the site heartbeat, and the batch header carries the backlog size.
+
+`robot_telemetry` only ever holds undelivered readings.
+
+1. Take the oldest undelivered readings, up to `BATCH_LIMIT`.
+2. Publish them and wait for RabbitMQ's publisher confirm.
+3. On a confirm, delete exactly those readings. On any failure, keep them for the next batch.
+
+During an outage readings pile up and drain oldest first once the link is back. If the confirm itself is lost a batch can go out twice, and central drops duplicates by `(robot_id, ts_ms)`. Readings still undelivered after `RETENTION_HOURS` are dropped so a dead uplink cannot fill the disk.
+
+| | Name |
+|---|---|
+| Exchange | `fleet` (topic) |
+| Routing key | `site.{SITE_ID}.telemetry` |
+| Queue central reads | `central.telemetry`, bound to `site.*.telemetry` so every site lands there |
+
+The gateway only dials out. Central never connects into a site.
+
+To see batches arriving, open the RabbitMQ management UI at http://localhost:15672 (user and password `olivaw`) or count messages in the queue.
+
+```bash
+curl -s -u olivaw:olivaw localhost:15672/api/queues/%2F/central.telemetry | python3 -c "import sys,json; print(json.load(sys.stdin)['messages'], 'messages')"
+```
 
 To add a vendor, write a module in `vendors/` with a `normalize()` that returns a `Reading` and a `run()` that discovers robots and feeds the store, then start it in `main.py`.
 
@@ -30,7 +54,7 @@ docker compose up -d --build
 
 ## See what it stored
 
-`show_state.py` prints every robot the gateway knows with its newest reading, straight from SQLite. Run it inside the gateway container.
+`show_state.py` prints what still waits for central and every robot the gateway knows, straight from SQLite. Run it inside the gateway container.
 
 ```bash
 make gateway-state
@@ -43,12 +67,14 @@ docker compose exec site1-gateway python show_state.py
 ```
 
 ```
-robot       vendor   state      error               batt       x,y (m)    age   rows
-cx-260723   cleanix  working                        48.7   12.5,  19.2   1.0s    719
-rv-14fa03   rovo     charging                       41.0    1.0,   1.0   0.9s    702
+waiting for central: 49 readings, oldest 5.5s
+
+robot       vendor   ip              last seen waiting
+cx-260723   cleanix  192.168.147.8        1.2s       5
+rv-14fa03   rovo     -                    1.0s       5
 ```
 
-`age` is how long ago the newest reading was measured. Around 1s means data is flowing, a growing age means the robot went quiet. `rows` is how many readings of that robot are stored.
+A healthy site waits on at most one interval of readings. A growing count means central is unreachable. `last seen` growing for one robot means that robot went quiet.
 
 ## Config
 
@@ -60,8 +86,10 @@ rv-14fa03   rovo     charging                       41.0    1.0,   1.0   0.9s   
 | `CLEANIX_DISCOVERY` | required | Name and port that resolve to Cleanix robots |
 | `DISCOVERY_INTERVAL_S` | 30 | How often to look for new or gone Cleanix robots |
 | `POLL_INTERVAL_S` | 1 | Cleanix status polling |
-| `UPLOADED_KEEP_S` | 600 | How long history stays after central confirmed it |
-| `RETENTION_HOURS` | 24 | Hard cap for history that never got uploaded, so a dead uplink cannot fill the disk |
+| `AMQP_URL` | required | Central RabbitMQ |
+| `UPLINK_INTERVAL_S` | 10 | How often a batch goes to central |
+| `BATCH_LIMIT` | 5000 | Readings per batch. A backlog drains in several. |
+| `RETENTION_HOURS` | 24 | Undelivered readings older than this are dropped |
 
 ## Test
 
