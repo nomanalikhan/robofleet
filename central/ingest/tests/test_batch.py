@@ -1,10 +1,13 @@
 import gzip
 import json
+import re
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import get_args
 
 import pytest
 
-from batch import parse
+from batch import Error, State, parse
 
 READING = {
     "robot_id": "rv-1", "ts_ms": 1760700000123, "received_ms": 1760700000200, "seq": 7,
@@ -60,3 +63,13 @@ def test_unknown_fields_are_ignored():
 def test_unreadable_batches_raise_what_ingest_rejects(body, error):
     with pytest.raises(error):
         parse(body)
+
+
+def test_state_and_error_values_match_the_schema():
+    schema = (Path(__file__).parents[1] / "schema.sql").read_text()
+
+    def check(column):
+        return set(re.findall(r"'(\w+)'", re.search(rf"{column} .*?CHECK \((.*?)\)\)", schema).group(1)))
+
+    assert check("state") == set(get_args(State))
+    assert check("error") == set(get_args(Error))

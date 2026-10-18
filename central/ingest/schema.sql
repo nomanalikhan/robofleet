@@ -1,5 +1,6 @@
 -- Central fleet schema. Applied by ingest at startup, every statement is idempotent.
--- The state and error values match batch.py and site/gateway/model.py.
+-- The state and error CHECKs match batch.py, central/api/models.py and site/gateway/model.py.
+-- Tests in ingest and the API fail if the Python copies drift from them.
 
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 

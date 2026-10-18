@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-# Same values as site/gateway/model.py and the CHECKs in schema.sql.
+# Same values as the CHECKs in schema.sql, enforced by a test.
 State = Literal["idle", "working", "returning", "charging", "paused", "error"]
 Error = Literal["wheel_stuck", "bumper_hit", "localization_lost"]
 
