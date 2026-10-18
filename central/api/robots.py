@@ -1,35 +1,16 @@
 """Robot routes."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
 import health
 from db import Db
 from models import Robot, RobotPage, RobotStatus, Telemetry
+from periods import MAX_RANGE, PERIODS, Period, bucket_for
 
 router = APIRouter(prefix="/robots", tags=["robots"])
-
-Period = Literal["hour", "day", "week", "month"]
-PERIODS = {
-    "hour": timedelta(hours=1),
-    "day": timedelta(days=1),
-    "week": timedelta(weeks=1),
-    "month": timedelta(days=30),
-}
-RAW_UP_TO = timedelta(hours=1)
-BUCKETS_S = [60, 300, 1800, 7200, 21600]  # the smallest that keeps a chart near MAX_POINTS wins
-MAX_POINTS = 400
-MAX_RANGE = timedelta(days=31)  # history is kept 30 days
-
-
-def bucket_for(span: timedelta) -> int | None:
-    """Seconds per point for a range, None for raw readings."""
-    if span <= RAW_UP_TO:
-        return None
-    return next((b for b in BUCKETS_S if span.total_seconds() / b <= MAX_POINTS), BUCKETS_S[-1])
-
 
 @router.get("")
 async def list_robots(
