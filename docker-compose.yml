@@ -1,0 +1,49 @@
+name: olivaw
+
+# Defaults live in botsim's main.go. Compose only passes overrides through.
+x-botsim: &botsim
+  image: olivaw/botsim:dev
+  build: ./simulator/botsim
+  environment: &botsim-env
+    CHAOS_ERROR_RATE: ${CHAOS_ERROR_RATE:-}
+    CHAOS_STUCK_RATE: ${CHAOS_STUCK_RATE:-}
+    CHAOS_DROPOUT_RATE: ${CHAOS_DROPOUT_RATE:-}
+    CHAOS_DELAY_RATE: ${CHAOS_DELAY_RATE:-}
+
+services:
+  # ---------- site 1 ----------
+  # mosquitto is site software. rovo and cleanix stand in for the robots.
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    volumes:
+      - ./site/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Many Rovo robots in one container, one goroutine each.
+  rovo:
+    <<: *botsim
+    environment:
+      <<: *botsim-env
+      MQTT_URL: tcp://mosquitto:1883
+      ROVO_COUNT: ${ROVO_COUNT:-5}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+  # One container per Cleanix robot, so each has its own IP. The service name
+  # resolves to every replica. Ports are published only for curl from the host.
+  cleanix:
+    <<: *botsim
+    environment:
+      <<: *botsim-env
+      CLEANIX_COUNT: 1
+    deploy:
+      replicas: ${CLEANIX_COUNT:-5}
+    ports:
+      - "9101-9150:8080"

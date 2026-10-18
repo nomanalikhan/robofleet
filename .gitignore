@@ -1,0 +1,19 @@
+.DS_Store
+.env
+node_modules/
+dist/
+__pycache__/
+.venv/
+*.db
+*.sqlite
+.archify/
+docs/*.finalize*.json
+docs/*.delivery.json
+docs/*.browser-check.json
+build/
+*.egg-info/
+.pytest_cache/
+
+# Local only, not part of the repo
+PLAN.md
+contracts/
