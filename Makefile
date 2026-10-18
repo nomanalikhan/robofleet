@@ -1,4 +1,4 @@
-.PHONY: up down logs test-botsim test-gateway gateway-state test-ingest central-db
+.PHONY: up down logs test test-botsim test-gateway test-ingest test-api gateway-state central-db
 
 up:
 	docker compose up -d --build
@@ -9,21 +9,27 @@ down:
 logs:
 	docker compose logs -f
 
-# Tests run in a container so the host Go version does not matter.
+test: test-botsim test-gateway test-ingest test-api
+
+# Go tests run in a container so the host Go version does not matter.
 test-botsim:
 	docker run --rm -v "$(CURDIR)/simulator/botsim":/src -w /src -v botsim-gomod:/go/pkg/mod -v botsim-gocache:/root/.cache/go-build golang:1.23 go test -race -count=1 ./...
 
+# Python tests run in each service's own image with the source mounted over it.
 test-gateway:
-	docker run --rm -v "$(CURDIR)":/repo -w /repo/site/gateway python:3.12-slim \
-		sh -c 'pip install -q --root-user-action=ignore -r requirements.txt && pytest -q'
-
-# Latest state of every robot the site gateway knows.
-gateway-state:
-	docker compose exec site1-gateway python show_state.py
+	docker compose run --rm --no-deps --build -v ./site/gateway:/app site1-gateway pytest -q
 
 test-ingest:
-	docker run --rm -v "$(CURDIR)/central/ingest":/src -w /src python:3.12-slim \
-		sh -c 'pip install -q --root-user-action=ignore -r requirements.txt && pytest -q'
+	docker compose run --rm --no-deps --build -v ./central/ingest:/app central-ingest pytest -q
+
+# Needs central-db running, the tests use a throwaway database on it.
+test-api:
+	docker compose run --rm --no-deps --build -v ./central:/central -w /central/api \
+		-e TEST_ADMIN_URL=postgresql://olivaw:olivaw@central-db:5432/postgres central-api pytest -q
+
+# What the site gateway still has to send, and every robot it knows.
+gateway-state:
+	docker compose exec site1-gateway python show_state.py
 
 # psql into central TimescaleDB.
 central-db:
