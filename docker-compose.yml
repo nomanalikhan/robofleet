@@ -12,8 +12,10 @@ x-botsim: &botsim
 
 services:
   # ---------- site 1 ----------
-  # mosquitto is site software. rovo and cleanix stand in for the robots.
-  mosquitto:
+  # Service names are <site>-<role>, so containers read like
+  # olivaw-site1-bot-cleanix-3. The site-1 software is mosquitto and gateway.
+  # The site1-bot-* services stand in for the robots.
+  site1-mosquitto:
     image: eclipse-mosquitto:2.0.20
     volumes:
       - ./site/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
@@ -25,20 +27,35 @@ services:
       timeout: 5s
       retries: 10
 
+  # The only link between this site's robots and central. Telemetry goes up,
+  # commands come down.
+  site1-gateway:
+    image: olivaw/gateway:dev
+    build: ./site/gateway
+    environment:
+      SITE_ID: site-1
+      MQTT_HOST: site1-mosquitto
+      CLEANIX_DISCOVERY: site1-bot-cleanix:8080
+    volumes:
+      - site1-gateway-data:/data
+    depends_on:
+      site1-mosquitto:
+        condition: service_healthy
+
   # Many Rovo robots in one container, one goroutine each.
-  rovo:
+  site1-bot-rovo:
     <<: *botsim
     environment:
       <<: *botsim-env
-      MQTT_URL: tcp://mosquitto:1883
+      MQTT_URL: tcp://site1-mosquitto:1883
       ROVO_COUNT: ${ROVO_COUNT:-5}
     depends_on:
-      mosquitto:
+      site1-mosquitto:
         condition: service_healthy
 
   # One container per Cleanix robot, so each has its own IP. The service name
   # resolves to every replica. Ports are published only for curl from the host.
-  cleanix:
+  site1-bot-cleanix:
     <<: *botsim
     environment:
       <<: *botsim-env
@@ -47,3 +64,6 @@ services:
       replicas: ${CLEANIX_COUNT:-5}
     ports:
       - "9101-9150:8080"
+
+volumes:
+  site1-gateway-data:

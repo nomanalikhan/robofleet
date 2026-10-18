@@ -62,7 +62,7 @@ func main() {
 
 // serialNamespace keeps serials unique across simulator containers and stable
 // across restarts. SIM_ID wins if set. Otherwise it is the container's compose
-// name, like olivaw-cleanix-3, found by a reverse DNS lookup of its own IP. The
+// name, like olivaw-site1-bot-cleanix-3, found by a reverse DNS lookup of its own IP. The
 // Dockerfile ships nsswitch.conf so Docker DNS answers before /etc/hosts. The
 // hostname is the fallback outside Docker.
 func serialNamespace() string {

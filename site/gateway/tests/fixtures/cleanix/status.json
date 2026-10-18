@@ -1,0 +1,16 @@
+{
+  "serial": "cx-8b20d4",
+  "model": "Cleanix S7",
+  "ts": "2025-10-17T11:20:00.123Z",
+  "battery_level": 0.42,
+  "work_state": "fault",
+  "fault": {
+    "code": "E102",
+    "message": "bumper hit"
+  },
+  "location": {
+    "x_cm": 1240,
+    "y_cm": 790,
+    "heading_deg": 90
+  }
+}

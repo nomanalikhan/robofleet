@@ -1,0 +1,15 @@
+{
+  "robotId": "rv-3f9a21",
+  "model": "Rovo D2",
+  "timestamp": 1760700000123,
+  "seq": 4211,
+  "battery": 87,
+  "status": "WORKING",
+  "errorCode": 0,
+  "pose": {
+    "x": 12.4,
+    "y": 7.9,
+    "theta": 1.57
+  },
+  "speed": 0.8
+}

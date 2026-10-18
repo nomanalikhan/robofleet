@@ -1,11 +1,11 @@
 # botsim
 
-Simulated robots for one site, from two fictional vendors. Field names, units and transports differ on purpose so the site agent has real normalization work to do. Wire formats are [below](#wire-formats).
+Simulated robots for one site, from two fictional vendors. Field names, units and transports differ on purpose so the site gateway has real normalization work to do. Wire formats are [below](#wire-formats).
 
 Compose runs the same image twice.
 
-- `rovo` is one container with `ROVO_COUNT` robots. Each robot is a goroutine with its own MQTT connection that pushes telemetry.
-- `cleanix` is one container per robot, so each robot has its own IP and HTTP server on port 8080 that has to be polled. Resolving the service name `cleanix` returns every robot's IP, which is how the site agent discovers them here.
+- `site1-bot-rovo` is one container with `ROVO_COUNT` robots. Each robot is a goroutine with its own MQTT connection that pushes telemetry.
+- `site1-bot-cleanix` is one container per robot, so each robot has its own IP and HTTP server on port 8080 that has to be polled. Resolving the service name `site1-bot-cleanix` returns every robot's IP, which is how the site gateway discovers them here.
 
 ## Run
 
@@ -15,7 +15,7 @@ From the repo root.
 ROVO_COUNT=5 CLEANIX_COUNT=5 docker compose up -d --build
 ```
 
-Here the counts are robots per type, 5 of each by default. Compose turns `CLEANIX_COUNT` into that many containers. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `olivaw-cleanix-3`, so robots keep their serial when containers are recreated.
+Here the counts are robots per type, 5 of each by default. Compose turns `CLEANIX_COUNT` into that many containers. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `olivaw-site1-bot-cleanix-3`, so robots keep their serial when containers are recreated.
 
 ## Config
 
@@ -39,13 +39,13 @@ Env of one botsim process. Compose sets the counts and passes the rest through.
 ## Check it
 
 ```bash
-docker compose exec mosquitto mosquitto_sub -t 'rovo/+/telemetry' -v
+docker compose exec site1-mosquitto mosquitto_sub -t 'rovo/+/telemetry' -v
 ```
 
 Cleanix containers get a free host port from 9101 to 9150, for curl only. This asks robot 1 for its status.
 
 ```bash
-curl -s "$(docker compose port --index 1 cleanix 8080)/api/v1/status"
+curl -s "$(docker compose port --index 1 site1-bot-cleanix 8080)/api/v1/status"
 ```
 
 ## Wire formats

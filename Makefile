@@ -1,4 +1,4 @@
-.PHONY: up down logs test-botsim
+.PHONY: up down logs test-botsim test-gateway gateway-state
 
 up:
 	docker compose up -d --build
@@ -12,3 +12,11 @@ logs:
 # Tests run in a container so the host Go version does not matter.
 test-botsim:
 	docker run --rm -v "$(CURDIR)/simulator/botsim":/src -w /src -v botsim-gomod:/go/pkg/mod -v botsim-gocache:/root/.cache/go-build golang:1.23 go test -race -count=1 ./...
+
+test-gateway:
+	docker run --rm -v "$(CURDIR)":/repo -w /repo/site/gateway python:3.12-slim \
+		sh -c 'pip install -q --root-user-action=ignore -r requirements.txt && pytest -q'
+
+# Latest state of every robot the site gateway knows.
+gateway-state:
+	docker compose exec site1-gateway python show_state.py
