@@ -63,6 +63,7 @@ def test_backlog_counts_waiting_readings(store):
     store.add(replace(BASE, ts_ms=2000, received_ms=700))
     store.flush()
     assert store.backlog() == (2, 500)
+    assert store.backlog(skip=1) == (1, 700)
 
 
 def test_prune_drops_only_readings_past_the_cap(store):

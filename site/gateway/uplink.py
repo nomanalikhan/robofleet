@@ -27,11 +27,11 @@ Publish = Callable[[bytes], Awaitable[None]]
 def build_batch(store: Store, site_id: str, limit: int) -> tuple[bytes, list[tuple[str, int]]]:
     """The next batch as gzipped JSON, plus the keys of the readings in it."""
     readings = store.unsent(limit)
-    pending, oldest_ms = store.backlog()
+    waiting, oldest_ms = store.backlog(skip=len(readings))  # what is left after this batch
     body = {
         "site_id": site_id,
         "sent_ms": now_ms(),
-        "backlog": {"readings": pending, "oldest_received_ms": oldest_ms},
+        "backlog": {"readings": waiting, "oldest_received_ms": oldest_ms},
         "robots": store.robots(),
         "readings": readings,
     }

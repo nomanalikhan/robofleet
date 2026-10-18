@@ -41,7 +41,7 @@ def test_confirmed_batch_is_deleted(store):
     assert batch["site_id"] == "site-1"
     assert [r["ts_ms"] for r in batch["readings"]] == [1000, 1001, 1002]
     assert batch["robots"][0] | {"last_seen_ms": None} == {"id": "rv-1", "vendor": "rovo", "last_seen_ms": None}
-    assert batch["backlog"] == {"readings": 3, "oldest_received_ms": 1000}
+    assert batch["backlog"] == {"readings": 0, "oldest_received_ms": None}  # nothing left behind it
 
 
 def test_failed_delivery_keeps_everything(store):
@@ -63,10 +63,13 @@ def test_reading_that_arrives_mid_flight_waits_for_the_next_batch(store):
 
 
 def test_backlog_drains_in_capped_batches(store):
+    sent = []
+
     async def publish(body):
-        pass
+        sent.append(json.loads(gzip.decompress(body))["backlog"])
 
     assert send(store, publish, limit=2) == 2
+    assert sent[0] == {"readings": 1, "oldest_received_ms": 1002}  # one reading waits for the next batch
     assert send(store, publish, limit=2) == 1
     assert store.backlog() == (0, None)
 

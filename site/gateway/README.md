@@ -18,7 +18,7 @@ Resolving a name to find Cleanix robots is a simulation stand-in. Docker DNS ret
 
 ## Forwarding to central
 
-Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with every reading central has not confirmed yet, so all 1 Hz readings and not just the newest. It sends a batch even when empty, so the batch doubles as the site heartbeat, and the batch header carries the backlog size.
+Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with every reading central has not confirmed yet, so all 1 Hz readings and not just the newest. It sends a batch even when empty, so the batch doubles as the site heartbeat. The header carries how many readings are still waiting after this batch, 0 for a caught up site.
 
 `robot_telemetry` only ever holds undelivered readings.
 

@@ -130,12 +130,18 @@ class Store:
         names = [d[0] for d in cur.description]
         return [dict(zip(names, row)) for row in cur]
 
-    def backlog(self) -> tuple[int, int | None]:
-        """How many readings wait for delivery, and when the oldest arrived."""
+    def backlog(self, skip: int = 0) -> tuple[int, int | None]:
+        """How many readings wait for delivery beyond the oldest `skip`, and
+        when the oldest of those arrived."""
         return self.db.execute("""
             SELECT count(*), min(received_ms)
-            FROM robot_telemetry
-        """).fetchone()
+            FROM (
+                SELECT received_ms
+                FROM robot_telemetry
+                ORDER BY received_ms
+                LIMIT -1 OFFSET ?
+            )
+        """, (skip,)).fetchone()
 
     def robots(self) -> list[dict]:
         cur = self.db.execute("""
