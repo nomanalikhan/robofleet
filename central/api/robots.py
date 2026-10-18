@@ -17,11 +17,15 @@ async def list_robots(
     db: Db,
     site_id: str | None = None,
     status: RobotStatus | None = None,
+    vendor: str | None = None,
+    q: Annotated[str | None, Query(description="part of the robot id")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RobotPage:
     """Robots with their newest reading and health, worst problems first."""
-    rows = await health.robots(db, site_id=site_id, status=status, limit=limit, offset=offset)
+    rows = await health.robots(
+        db, site_id=site_id, status=status, vendor=vendor, q=q, limit=limit, offset=offset,
+    )
     return RobotPage(items=[Robot(**r) for r in rows], total=rows[0]["total"] if rows else 0)
 
 

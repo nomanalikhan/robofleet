@@ -6,7 +6,7 @@ Read-only FastAPI service over central TimescaleDB. It answers what every site a
 |---|---|---|
 | `GET` | `/api/v1/sites` | Every site with its status and robot counts per health status |
 | `GET` | `/api/v1/sites/{site_id}` | One site |
-| `GET` | `/api/v1/robots?site_id=&status=&limit=&offset=` | Robots with their newest reading and health, worst first, paginated |
+| `GET` | `/api/v1/robots?site_id=&status=&vendor=&q=&limit=&offset=` | Robots with their newest reading and health, worst first, paginated |
 | `GET` | `/api/v1/robots/{robot_id}` | One robot |
 | `GET` | `/api/v1/robots/{robot_id}/telemetry?period=` | Chart data for the last `hour`, `day`, `week` or `month`, or any `from`/`to` range up to 31 days |
 | `GET` | `/health` | `ok` when the database answers |

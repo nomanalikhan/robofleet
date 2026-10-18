@@ -72,6 +72,8 @@ ROBOTS = """
     WHERE ($6::text IS NULL OR r.site_id = $6)
       AND ($7::text IS NULL OR r.id = $7)
       AND ($8::text IS NULL OR h.status = $8)
+      AND ($11::text IS NULL OR r.vendor = $11)
+      AND ($12::text IS NULL OR r.id ILIKE '%' || $12 || '%')
     ORDER BY array_position($5::text[], h.status), r.id
     LIMIT $9 OFFSET $10
 """
@@ -86,10 +88,12 @@ async def robots(
     site_id: str | None = None,
     robot_id: str | None = None,
     status: str | None = None,
+    vendor: str | None = None,
+    q: str | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[asyncpg.Record]:
     return await db.fetch(
         ROBOTS, OFFLINE_S, LOW_BATTERY_PCT, STUCK_S, STUCK_M, SEVERITY,
-        site_id, robot_id, status, limit, offset,
+        site_id, robot_id, status, limit, offset, vendor, q,
     )

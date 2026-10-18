@@ -121,6 +121,11 @@ def telemetry(client, **params):
     return client.get("/api/v1/robots/rv-ok/telemetry", params=params).json()
 
 
+def test_robot_filters_by_vendor_and_search(client):
+    assert [r["id"] for r in robots(client, vendor="cleanix")["items"]] == ["cx-dark", "cx-new"]
+    assert [r["id"] for r in robots(client, q="DOCK")["items"]] == ["rv-dock"]
+
+
 def test_telemetry_is_raw_for_short_ranges(client):
     t = telemetry(client)
     assert (t["bucket_s"], len(t["points"])) == (None, 40)
