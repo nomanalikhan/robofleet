@@ -9,7 +9,14 @@ import sites
 from db import Db, lifespan
 
 # redoc_url=None because FastAPI's default loads redoc@next, a prerelease that renders a blank page.
-app = FastAPI(title="Olivaw Fleet API", version="1.0.0", lifespan=lifespan, redoc_url=None)
+# Operation ids are the route function names, so generated clients get names like useListRobots.
+app = FastAPI(
+    title="Olivaw Fleet API",
+    version="1.0.0",
+    lifespan=lifespan,
+    redoc_url=None,
+    generate_unique_id_function=lambda route: route.name,
+)
 app.include_router(sites.router, prefix="/api/v1")
 app.include_router(robots.router, prefix="/api/v1")
 

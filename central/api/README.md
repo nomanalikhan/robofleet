@@ -1,6 +1,6 @@
 # Fleet API
 
-Read-only FastAPI service over central TimescaleDB. It answers what every site and robot is doing right now and what they did before. Swagger is at http://localhost:8000/docs and the spec at `/openapi.json`, which the web UI generates its client from.
+Read-only FastAPI service over central TimescaleDB. It answers what every site and robot is doing right now and what they did before. Swagger is at http://localhost:8000/docs and the spec at `/openapi.json`, which the web UI generates its client from. Operation ids are the route function names, so the generated hooks read `useListRobots` or `useGetTelemetry`.
 
 | Method | Path | Returns |
 |---|---|---|
