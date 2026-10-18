@@ -8,14 +8,7 @@ The message is acked only after the commit, so a crash means redelivery and neve
 
 ## Schema
 
-[schema.sql](schema.sql), applied at startup. Tables `sites`, `robots` and the hypertable `robot_telemetry` with daily chunks and 30 day retention. There is no current state table. The newest reading per robot is a query.
-
-```sql
-SELECT DISTINCT ON (robot_id) *
-FROM robot_telemetry
-WHERE ts > now() - INTERVAL '1 hour'
-ORDER BY robot_id, ts DESC;
-```
+[schema.sql](schema.sql), applied at startup. Tables `sites`, `robots` and the hypertable `robot_telemetry` with daily chunks and 30 day retention. What each robot is doing right now is derived from these tables by the [Fleet API](../api/README.md).
 
 ## Run
 

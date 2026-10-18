@@ -26,7 +26,7 @@ Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with e
 2. Publish them and wait for RabbitMQ's publisher confirm.
 3. On a confirm, delete exactly those readings. On any failure, keep them for the next batch.
 
-During an outage readings pile up and drain oldest first once the link is back. If the confirm itself is lost a batch can go out twice, and central drops duplicates by `(robot_id, ts_ms)`. Readings still undelivered after `RETENTION_HOURS` are dropped so a dead uplink cannot fill the disk.
+During an outage readings pile up and drain oldest first once the link is back. If the confirm itself is lost a batch can go out twice, and central drops duplicates by robot and timestamp. Readings still undelivered after `RETENTION_HOURS` are dropped so a dead uplink cannot fill the disk.
 
 | | Name |
 |---|---|
@@ -36,10 +36,10 @@ During an outage readings pile up and drain oldest first once the link is back. 
 
 The gateway only dials out. Central never connects into a site.
 
-To see batches arriving, open the RabbitMQ management UI at http://localhost:15672 (user and password `olivaw`) or count messages in the queue.
+Central ingest logs every batch it stores, which is the quickest way to watch them arrive.
 
 ```bash
-curl -s -u olivaw:olivaw localhost:15672/api/queues/%2F/central.telemetry | python3 -c "import sys,json; print(json.load(sys.stdin)['messages'], 'messages')"
+docker compose logs -f central-ingest
 ```
 
 To add a vendor, write a module in `vendors/` with a `normalize()` that returns a `Reading` and a `run()` that discovers robots and feeds the store, then start it in `main.py`.

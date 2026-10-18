@@ -88,5 +88,3 @@ Every robot serves `http://{robot-ip}:8080/api/v1`.
 ```bash
 make test-botsim
 ```
-
-Tests run in a container so the host Go version does not matter.
