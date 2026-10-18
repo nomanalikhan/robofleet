@@ -1,4 +1,4 @@
-.PHONY: up down logs test-botsim test-gateway gateway-state
+.PHONY: up down logs test-botsim test-gateway gateway-state test-ingest central-db
 
 up:
 	docker compose up -d --build
@@ -20,3 +20,11 @@ test-gateway:
 # Latest state of every robot the site gateway knows.
 gateway-state:
 	docker compose exec site1-gateway python show_state.py
+
+test-ingest:
+	docker run --rm -v "$(CURDIR)/central/ingest":/src -w /src python:3.12-slim \
+		sh -c 'pip install -q --root-user-action=ignore -r requirements.txt && pytest -q'
+
+# psql into central TimescaleDB.
+central-db:
+	docker compose exec central-db psql -U olivaw -d fleet

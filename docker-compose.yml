@@ -13,7 +13,8 @@ x-botsim: &botsim
 
 configs:
   # Central broker topology, loaded at boot. The gateway publishes to the fleet
-  # exchange and central ingest will consume central.telemetry.
+  # exchange, central ingest consumes central.telemetry, and batches ingest
+  # rejects land in central.telemetry.dead for inspection.
   central-rabbitmq-conf:
     content: |
       load_definitions = /etc/rabbitmq/definitions.json
@@ -26,7 +27,9 @@ configs:
         "permissions": [{"user": "olivaw", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}],
         "exchanges": [{"name": "fleet", "vhost": "/", "type": "topic", "durable": true,
                        "auto_delete": false, "internal": false, "arguments": {}}],
-        "queues": [{"name": "central.telemetry", "vhost": "/", "durable": true,
+        "queues": [{"name": "central.telemetry", "vhost": "/", "durable": true, "auto_delete": false,
+                    "arguments": {"x-dead-letter-exchange": "", "x-dead-letter-routing-key": "central.telemetry.dead"}},
+                   {"name": "central.telemetry.dead", "vhost": "/", "durable": true,
                     "auto_delete": false, "arguments": {}}],
         "bindings": [{"source": "fleet", "vhost": "/", "destination": "central.telemetry",
                       "destination_type": "queue", "routing_key": "site.*.telemetry", "arguments": {}}]
@@ -50,6 +53,37 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
+
+  central-db:
+    image: timescale/timescaledb:2.16.1-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: olivaw
+      POSTGRES_PASSWORD: olivaw
+      POSTGRES_DB: fleet
+    volumes:
+      - central-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "olivaw", "-d", "fleet"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Consumes central.telemetry and stores every reading in TimescaleDB.
+  central-ingest:
+    image: olivaw/ingest:dev
+    build: ./central/ingest
+    restart: unless-stopped
+    environment:
+      AMQP_URL: amqp://olivaw:olivaw@central-rabbitmq:5672/
+      DATABASE_URL: postgresql://olivaw:olivaw@central-db:5432/fleet
+    depends_on:
+      central-db:
+        condition: service_healthy
+      central-rabbitmq:
+        condition: service_healthy
 
   # ---------- site 1 ----------
   # Service names are <site>-<role>, so containers read like
@@ -110,3 +144,4 @@ services:
 
 volumes:
   site1-gateway-data:
+  central-db-data:
