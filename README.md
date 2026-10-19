@@ -4,11 +4,9 @@ Robots at several sites report their state once a second. This repo gets that da
 
 All three parts of the brief are built and run with one command. Simulated robots from two vendors feed a gateway on each site, the gateway forwards every reading to central, and central stores it, derives health and serves a web UI.
 
-```
-site (x2)                                         central
-robots ── MQTT / HTTP ──> gateway ── AMQP ──> RabbitMQ ──> ingest ──> TimescaleDB ──> Fleet API ──> web UI
-                          SQLite outbox        site.*.telemetry                        health rules
-```
+![Olivaw architecture. Robots on each site feed a gateway, which forwards batches over AMQP to central RabbitMQ, ingest, TimescaleDB, the Fleet API and the web UI.](architecture.png)
+
+For an interactive version you can zoom and trace paths in, open [architecture.html](architecture.html) in a browser.
 
 ## Run
 
@@ -38,11 +36,10 @@ That runs the Go and Python tests inside the service images, so nothing needs in
 | Path | What | More |
 |---|---|---|
 | [simulator/botsim](simulator/botsim) | Go robot simulator. Two fictional vendors with different transports, units, enums and error codes, plus injected errors, stuck robots, dropouts and late readings. | [README](simulator/botsim/README.md) |
-| [site/gateway](site/gateway) | Python service per site. Discovers robots, normalizes both vendors into one reading, buffers in SQLite and forwards to central. | [README](site/gateway/README.md) |
+| [site/gateway](site/gateway) | Python service per site. Discovers robots, normalizes both vendors into one reading, buffers in SQLite and forwards to central. | [README](site/gateway/README.md), with how a reading reaches central |
 | [central/ingest](central/ingest) | Consumes gateway batches and stores them in TimescaleDB, idempotently. | [README](central/ingest/README.md) |
-| [central/api](central/api) | Read-only FastAPI service. Sites, robots with derived health, chart history. | [README](central/api/README.md) |
+| [central/api](central/api) | Read-only FastAPI service. Sites, robots with derived health, chart history. | [README](central/api/README.md), with how health is decided |
 | [web](web) | React UI. Site dashboard, robot list, robot detail. | [README](web/README.md) |
-| [docs/architecture.html](docs/architecture.html) | Interactive architecture diagram | |
 
 ## Why it is built this way
 

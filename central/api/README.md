@@ -29,6 +29,8 @@ Robot details and chart data are separate calls on purpose. The UI refreshes det
 
 ## Health
 
+![How a robot's health status is decided](health.png)
+
 Nothing is stored. It is derived on every request from the newest readings and each site's last batch. The thresholds are named constants at the top of `health.py`.
 
 | Status | Rule |

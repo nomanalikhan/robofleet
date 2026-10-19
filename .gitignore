@@ -7,9 +7,6 @@ __pycache__/
 *.db
 *.sqlite
 .archify/
-docs/*.finalize*.json
-docs/*.delivery.json
-docs/*.browser-check.json
 build/
 *.egg-info/
 .pytest_cache/
