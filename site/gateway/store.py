@@ -104,7 +104,6 @@ class Store:
             return 0
         rows = [asdict(r) for r in self.pending]
         last_seen = {r.robot_id: r.received_ms for r in self.pending}
-        self.pending = []
         with self.db:
             before = self.db.total_changes
             self.db.executemany("""
@@ -122,6 +121,7 @@ class Store:
                 SET last_seen = max(last_seen, ?)
                 WHERE id = ?
             """, [(t, rid) for rid, t in last_seen.items()])
+        self.pending.clear()  # only once committed, so a failed flush retries these rows
         self.waiting += inserted
         return inserted
 
@@ -135,7 +135,7 @@ class Store:
             LIMIT ?
         """, (limit,))
         names = [d[0] for d in cur.description]
-        return [dict(zip(names, row)) for row in cur]
+        return [dict(zip(names, row, strict=True)) for row in cur]
 
     def backlog(self, skip: int = 0) -> tuple[int, int | None]:
         """How many readings wait for delivery beyond the oldest `skip`, and

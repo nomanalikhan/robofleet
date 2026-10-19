@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import signal
+import sqlite3
 
 from config import Config
 from store import Store
@@ -18,7 +19,10 @@ async def flusher(store: Store, cfg: Config) -> None:
     tick = 0
     while True:
         await asyncio.sleep(1)
-        store.flush()
+        try:
+            store.flush()
+        except sqlite3.Error:
+            log.exception("flush failed, keeping %d readings for the next one", len(store.pending))
         tick += 1
         if tick % 60 == 0 and (dropped := store.prune(cfg.retention_hours)):
             log.warning("dropped %d undelivered readings older than %gh", dropped, cfg.retention_hours)

@@ -9,7 +9,7 @@ import asyncio
 import logging
 
 import aiomqtt
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from model import Error, Reading, State
 from store import Store, now_ms
@@ -29,16 +29,20 @@ ERRORS: dict[int, Error | None] = {0: None, 101: "wheel_stuck", 102: "bumper_hit
 
 
 class Pose(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     x: float
     y: float
     theta: float
 
 
 class Telemetry(BaseModel):
-    robotId: str
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    robotId: str = Field(max_length=64)
     timestamp: int
     seq: int
-    battery: int
+    battery: int = Field(ge=0, le=100)
     status: str
     errorCode: int
     pose: Pose
@@ -87,6 +91,10 @@ def handle(store: Store, topic: str, payload: bytes) -> None:
     if leaf != "telemetry":
         return  # online flags only matter for discovery until events exist
     try:
-        store.add(normalize(payload, now_ms()))
+        reading = normalize(payload, now_ms())
+        # The row is keyed by the payload's id but only the topic's id is registered.
+        if reading.robot_id != robot_id:
+            raise ValueError(f"robotId {reading.robot_id!r} does not match topic")
+        store.add(reading)
     except (ValidationError, ValueError) as e:
         log.warning("rovo: dropping bad telemetry from %s: %s", robot_id, e)

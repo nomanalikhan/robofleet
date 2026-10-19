@@ -3,9 +3,9 @@
 Runs on each site and is the only link between the site's robots and central. Central never talks to a robot directly.
 
 - **Up.** Finds every robot on the local network whatever its vendor, translates each vendor's format into one canonical reading, keeps the history in SQLite and forwards it to central.
-- **Down.** Takes commands from central, routes each to the right robot through its vendor adapter and reports the outcome back.
+- **Down, not built.** Would take commands from central, route each to the right robot through its vendor adapter and report the outcome back. The design is in the top README under what was left out.
 
-Built so far is discovery, normalization, local storage and forwarding to central. Executing commands comes next. The gateway does no analysis of its own. Central decides what counts as a problem.
+Built is discovery, normalization, local storage and forwarding to central. The gateway does no analysis of its own. Central decides what counts as a problem.
 
 Every vendor is one adapter in `vendors/`. An adapter knows how to discover that vendor's robots, how to get their data, how to map fields, units and enums and how to send them commands. Two adapters exist today. Their wire formats are in the [botsim README](../../simulator/botsim/README.md#wire-formats).
 
@@ -20,7 +20,7 @@ Resolving a name to find Cleanix robots is a simulation stand-in. Docker DNS ret
 
 ![How a reading travels from a robot to TimescaleDB, and what happens when delivery fails](uplink.png)
 
-Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with every reading central has not confirmed yet, so all 1 Hz readings and not just the newest. It sends a batch even when empty, so the batch doubles as the site heartbeat. The header carries how many readings are still waiting after this batch, 0 for a caught up site.
+Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with every reading central has not confirmed yet, so all 1 Hz readings and not just the newest. It sends a batch even when empty, so the batch doubles as the site heartbeat. The batch carries how many readings are still waiting after it, 0 for a caught up site.
 
 `robot_telemetry` only ever holds undelivered readings.
 
@@ -28,7 +28,7 @@ Every `UPLINK_INTERVAL_S` the gateway sends one batch to central RabbitMQ with e
 2. Publish them and wait for RabbitMQ's publisher confirm.
 3. On a confirm, delete exactly those readings. On any failure, keep them for the next batch.
 
-During an outage readings pile up and drain oldest first once the link is back. If the confirm itself is lost a batch can go out twice, and central drops duplicates by robot and timestamp. Readings still undelivered after `RETENTION_HOURS` are dropped so a dead uplink cannot fill the disk.
+During an outage readings pile up and drain oldest first once the link is back. If the confirm itself is lost a batch can go out twice, and central drops duplicates by robot and timestamp. Readings still undelivered after `RETENTION_HOURS` are dropped. That caps the backlog by age, not by size, so a very large site with a dead uplink for a day could still fill a small disk. A row cap is the fix if that ever matters.
 
 | | Name |
 |---|---|

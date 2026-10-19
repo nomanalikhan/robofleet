@@ -1,9 +1,12 @@
+import asyncio
 import json
 import math
 from pathlib import Path
 
+import httpx
 import pytest
 
+from store import Store
 from vendors import cleanix, rovo
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -49,11 +52,58 @@ def test_both_vendors_land_in_the_same_units():
         (rovo, "rovo/telemetry.json", {"status": "DANCING"}),
         (rovo, "rovo/telemetry.json", {"errorCode": 999}),
         (rovo, "rovo/telemetry.json", {"battery": "full"}),
+        (rovo, "rovo/telemetry.json", {"battery": 101}),
+        (rovo, "rovo/telemetry.json", {"speed": float("inf")}),
+        (rovo, "rovo/telemetry.json", {"robotId": "rv-" + "f" * 62}),
         (cleanix, "cleanix/status.json", {"work_state": "dancing"}),
         (cleanix, "cleanix/status.json", {"fault": {"code": "E999", "message": "?"}}),
+        (cleanix, "cleanix/status.json", {"battery_level": 1.5}),
+        (cleanix, "cleanix/status.json", {"battery_level": float("nan")}),
+        (cleanix, "cleanix/status.json", {"serial": "cx-" + "f" * 62}),
     ],
 )
 def test_unknown_values_are_rejected(vendor, name, patch):
     raw = json.loads(contract(name)) | patch
     with pytest.raises(ValueError):  # pydantic's ValidationError is a ValueError
         vendor.normalize(json.dumps(raw).encode(), 1)
+
+
+def test_rovo_online_registers_the_robot():
+    store = Store(":memory:")
+    rovo.handle(store, "rovo/rv-1/online", b"1")
+    assert [r["id"] for r in store.robots()] == ["rv-1"]
+    assert store.pending == []
+
+
+def test_rovo_telemetry_is_stored_under_the_topic_robot():
+    store = Store(":memory:")
+    rovo.handle(store, "rovo/rv-3f9a21/telemetry", contract("rovo/telemetry.json"))
+    assert [r.robot_id for r in store.pending] == ["rv-3f9a21"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"{not json",
+        contract("rovo/telemetry.json"),  # says rv-3f9a21, which is not the topic's robot
+    ],
+)
+def test_rovo_drops_telemetry_that_does_not_fit_the_topic(payload):
+    store = Store(":memory:")
+    rovo.handle(store, "rovo/rv-1/telemetry", payload)
+    assert store.pending == []
+    assert [r["id"] for r in store.robots()] == ["rv-1"]
+
+
+def test_cleanix_probe_treats_anything_but_a_serial_as_no_robot():
+    def probe(body):
+        async def go():
+            transport = httpx.MockTransport(lambda req: httpx.Response(200, content=body))
+            async with httpx.AsyncClient(transport=transport) as http:
+                return await cleanix.probe(http, "http://10.0.0.1:8080/api/v1")
+
+        return asyncio.run(go())
+
+    assert probe(b'{"serial": "cx-1"}') == "cx-1"
+    assert probe(b"[1, 2]") is None  # TypeError on a non-dict body
+    assert probe(b"<html>") is None

@@ -5,22 +5,16 @@ from dataclasses import replace
 
 import pytest
 
-from model import Reading
 from store import Store
 from uplink import send_once
 
-BASE = Reading(
-    robot_id="rv-1", ts_ms=1000, received_ms=1000, seq=1, battery_pct=80,
-    state="working", error=None, x_m=1, y_m=1, heading_rad=0, speed_mps=0.8,
-)
-
 
 @pytest.fixture
-def store():
+def store(base):
     s = Store(":memory:")
     s.register("rv-1", "rovo")
     for i in range(3):
-        s.add(replace(BASE, ts_ms=1000 + i, received_ms=1000 + i))
+        s.add(replace(base, ts_ms=1000 + i, received_ms=1000 + i))
     s.flush()
     return s
 
@@ -53,9 +47,9 @@ def test_failed_delivery_keeps_everything(store):
     assert store.backlog()[0] == 3  # all three go out with the next batch
 
 
-def test_reading_that_arrives_mid_flight_waits_for_the_next_batch(store):
+def test_reading_that_arrives_mid_flight_waits_for_the_next_batch(store, base):
     async def publish(body):
-        store.add(replace(BASE, ts_ms=2000, received_ms=2000))  # lands while the batch is in flight
+        store.add(replace(base, ts_ms=2000, received_ms=2000))  # lands while the batch is in flight
         store.flush()
 
     assert send(store, publish) == 3

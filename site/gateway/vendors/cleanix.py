@@ -17,7 +17,7 @@ import socket
 from datetime import datetime
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from model import Error, Reading, State
 from store import Store, now_ms
@@ -48,9 +48,11 @@ class Location(BaseModel):
 
 
 class Status(BaseModel):
-    serial: str
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    serial: str = Field(max_length=64)
     ts: datetime
-    battery_level: float
+    battery_level: float = Field(ge=0, le=1)
     work_state: str
     fault: Fault | None
     location: Location
@@ -86,27 +88,33 @@ async def run(store: Store, discovery: str, discovery_interval_s: float, poll_in
     async with httpx.AsyncClient(timeout=2) as http:
         while True:
             ips = await resolve(host)
+            if ips is None:
+                log.warning("cleanix: cannot resolve %s, retrying in %ds", host, RETRY_S)
+                await asyncio.sleep(RETRY_S)
+                continue
             missed = not ips
-            for ip in ips - pollers.keys():
-                url = f"http://{ip}:{port}{BASE_PATH}"
-                serial = await probe(http, url)
+            urls = {ip: f"http://{ip}:{port}{BASE_PATH}" for ip in ips - pollers.keys()}
+            serials = await asyncio.gather(*(probe(http, url) for url in urls.values()))
+            for (ip, url), serial in zip(urls.items(), serials, strict=True):
                 if not serial:
                     missed = True  # booting or not a Cleanix robot, look again soon
                     continue
                 new = store.register(serial, VENDOR, ip)
                 log.info("cleanix: %s %s at %s, polling", "discovered" if new else "found", serial, ip)
-                pollers[ip] = asyncio.create_task(poll(store, http, url, serial, poll_interval_s))
+                pollers[ip] = asyncio.create_task(poll(store, http, ip, url, serial, poll_interval_s))
             for ip in pollers.keys() - ips:
                 log.info("cleanix: %s left the network", ip)
                 pollers.pop(ip).cancel()
             await asyncio.sleep(RETRY_S if missed else discovery_interval_s)
 
 
-async def resolve(host: str) -> set[str]:
+async def resolve(host: str) -> set[str] | None:
+    """Candidate IPs. Empty means the name resolves to nothing (scaled to zero),
+    None means DNS itself failed and nothing is known."""
     try:
         infos = await asyncio.get_running_loop().getaddrinfo(host, None, family=socket.AF_INET)
     except socket.gaierror:
-        return set()
+        return None
     return {info[4][0] for info in infos}
 
 
@@ -115,23 +123,28 @@ async def probe(http: httpx.AsyncClient, url: str) -> str | None:
         res = await http.get(f"{url}/info")
         res.raise_for_status()
         return res.json()["serial"]
-    except (httpx.HTTPError, ValueError, KeyError):
+    except Exception:  # whatever does not answer /info properly is not a Cleanix robot
         return None
 
 
-async def poll(store: Store, http: httpx.AsyncClient, url: str, serial: str, interval_s: float) -> None:
+async def poll(store: Store, http: httpx.AsyncClient, ip: str, url: str, serial: str, interval_s: float) -> None:
     loop = asyncio.get_running_loop()
     next_at = loop.time()
     while True:
         try:
             res = await http.get(f"{url}/status")
             if res.status_code == 200:
-                store.add(normalize(res.content, now_ms()))
+                reading = normalize(res.content, now_ms())
+                # Another robot may have taken over this IP since /info was probed.
+                store.register(reading.robot_id, VENDOR, ip)
+                store.add(reading)
             else:
                 log.debug("cleanix: %s answered %d", serial, res.status_code)
         except httpx.HTTPError as e:
             log.debug("cleanix: %s unreachable: %s", serial, e)
         except (ValidationError, ValueError) as e:
             log.warning("cleanix: dropping bad status from %s: %s", serial, e)
+        except Exception:
+            log.exception("cleanix: poll of %s failed", serial)
         next_at += interval_s
         await asyncio.sleep(max(0, next_at - loop.time()))

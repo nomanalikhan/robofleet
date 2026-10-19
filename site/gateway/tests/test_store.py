@@ -3,13 +3,7 @@ from dataclasses import replace
 
 import pytest
 
-from model import Reading
 from store import Store, now_ms
-
-BASE = Reading(
-    robot_id="rv-1", ts_ms=1000, received_ms=1000, seq=1, battery_pct=80,
-    state="working", error=None, x_m=1, y_m=1, heading_rad=0, speed_mps=0.8,
-)
 
 
 @pytest.fixture
@@ -26,58 +20,62 @@ def count(store):
     """).fetchone()[0]
 
 
-def test_same_reading_twice_is_stored_once(store):
-    store.add(BASE)
-    store.add(BASE)  # a Cleanix poll can return the snapshot it returned before
+def test_same_reading_twice_is_stored_once(store, base):
+    store.add(base)
+    store.add(base)  # a Cleanix poll can return the snapshot it returned before
     assert store.flush() == 1
-    store.add(BASE)
+    store.add(base)
     assert store.flush() == 0
     assert count(store) == 1
 
 
-def test_readings_need_a_registered_robot(store):
-    store.add(replace(BASE, robot_id="ghost"))
+def test_failed_flush_keeps_readings_for_the_next_one(store, base):
+    store.add(replace(base, robot_id="ghost"))
     with pytest.raises(sqlite3.IntegrityError):
         store.flush()
+    assert len(store.pending) == 1
+    store.register("ghost", "rovo")
+    assert store.flush() == 1
+    assert store.pending == []
 
 
-def test_unsent_is_oldest_arrival_first_and_capped(store):
-    store.add(replace(BASE, ts_ms=3000, received_ms=30))
-    store.add(replace(BASE, ts_ms=1000, received_ms=10))  # measured earlier, arrived first
-    store.add(replace(BASE, ts_ms=2000, received_ms=20))
+def test_unsent_is_oldest_arrival_first_and_capped(store, base):
+    store.add(replace(base, ts_ms=3000, received_ms=30))
+    store.add(replace(base, ts_ms=1000, received_ms=10))  # measured earlier, arrived first
+    store.add(replace(base, ts_ms=2000, received_ms=20))
     store.flush()
     assert [r["ts_ms"] for r in store.unsent(limit=2)] == [1000, 2000]
 
 
-def test_delivered_deletes_only_the_confirmed_keys(store):
-    store.add(replace(BASE, ts_ms=1000))
-    store.add(replace(BASE, ts_ms=2000))
+def test_delivered_deletes_only_the_confirmed_keys(store, base):
+    store.add(replace(base, ts_ms=1000))
+    store.add(replace(base, ts_ms=2000))
     store.flush()
     store.delivered([("rv-1", 1000)])
     assert [r["ts_ms"] for r in store.unsent(limit=10)] == [2000]
 
 
-def test_backlog_counts_waiting_readings(store):
+def test_backlog_counts_waiting_readings(store, base):
     assert store.backlog() == (0, None)
-    store.add(replace(BASE, ts_ms=1000, received_ms=500))
-    store.add(replace(BASE, ts_ms=2000, received_ms=700))
+    store.add(replace(base, ts_ms=1000, received_ms=500))
+    store.add(replace(base, ts_ms=2000, received_ms=700))
     store.flush()
     assert store.backlog() == (2, 500)
     assert store.backlog(skip=1) == (1, 700)
 
 
-def test_backlog_count_survives_a_restart(tmp_path):
+def test_backlog_count_survives_a_restart(tmp_path, base):
     first = Store(str(tmp_path / "g.db"))
     first.register("rv-1", "rovo")
-    first.add(BASE)
+    first.add(base)
     first.flush()
     assert Store(str(tmp_path / "g.db")).backlog() == (1, 1000)
 
 
-def test_prune_drops_only_readings_past_the_cap(store):
+def test_prune_drops_only_readings_past_the_cap(store, base):
     now = now_ms()
-    store.add(replace(BASE, ts_ms=1, received_ms=now - 25 * 3_600_000))  # waited 25h
-    store.add(replace(BASE, ts_ms=2, received_ms=now))
+    store.add(replace(base, ts_ms=1, received_ms=now - 25 * 3_600_000))  # waited 25h
+    store.add(replace(base, ts_ms=2, received_ms=now))
     store.flush()
     assert store.prune(retention_hours=24) == 1
     assert [r["ts_ms"] for r in store.unsent(limit=10)] == [2]
