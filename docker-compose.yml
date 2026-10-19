@@ -105,6 +105,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # The web UI on http://localhost:3000, with /api proxied to central-api.
+  central-web:
+    image: olivaw/web:dev
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - central-api
+
   # ---------- site 1 ----------
   # Service names are <site>-<role>, so containers read like
   # olivaw-site1-bot-cleanix-3. The site-1 software is mosquitto and gateway.

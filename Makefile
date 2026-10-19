@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-botsim test-gateway test-ingest test-api gateway-state central-db
+.PHONY: up down logs test test-botsim test-gateway test-ingest test-api gateway-state central-db web-api
 
 up:
 	docker compose up -d --build
@@ -34,3 +34,7 @@ gateway-state:
 # psql into central TimescaleDB.
 central-db:
 	docker compose exec central-db psql -U olivaw -d fleet
+
+# Regenerate the UI's API client from the running Fleet API.
+web-api:
+	cd web && npm run gen:api
