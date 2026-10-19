@@ -6,11 +6,6 @@ __pycache__/
 .venv/
 *.db
 *.sqlite
-.archify/
 build/
 *.egg-info/
 .pytest_cache/
-
-# Local only, not part of the repo
-PLAN.md
-contracts/
