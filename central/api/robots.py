@@ -53,9 +53,6 @@ async def get_telemetry(
     start = start or end - (PERIODS[period] if period else timedelta(minutes=15))
     if not timedelta(0) < end - start <= MAX_RANGE:
         raise HTTPException(422, f"range must be positive and at most {MAX_RANGE.days} days")
-    if not await db.fetchval("SELECT 1 FROM robots WHERE id = $1", robot_id):
-        raise HTTPException(404, f"unknown robot {robot_id}")
-
     bucket_s = bucket_for(end - start)
     if bucket_s is None:
         rows = await db.fetch("""
@@ -77,4 +74,6 @@ async def get_telemetry(
             GROUP BY 1
             ORDER BY 1
         """, robot_id, start, end, bucket_s)
+    if not rows and not await db.fetchval("SELECT 1 FROM robots WHERE id = $1", robot_id):
+        raise HTTPException(404, f"unknown robot {robot_id}")
     return Telemetry(bucket_s=bucket_s, points=[dict(r) for r in rows])
