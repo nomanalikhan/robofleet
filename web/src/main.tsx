@@ -8,9 +8,15 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './App'
+import { HttpError } from './api/http'
 
 const theme = createTheme({ primaryColor: 'teal', defaultRadius: 'md' })
-const queries = new QueryClient({ defaultOptions: { queries: { retry: 1 } } })
+// Retry once, but a 4xx will not get better.
+const queries = new QueryClient({
+  defaultOptions: {
+    queries: { retry: (n, err) => n < 1 && !(err instanceof HttpError && err.status < 500) },
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

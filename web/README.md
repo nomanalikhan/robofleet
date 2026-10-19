@@ -6,9 +6,9 @@ The fleet manager's UI. React, Vite and TypeScript with Mantine in a dark theme,
 |---|---|
 | `/sites/:siteId` | Status and heartbeat, robot and health counts, robots by vendor, what the fleet was doing over the last hour, day, week or month, a live floor map and the robots that need attention |
 | `/robots` | Every robot worst first, filtered by site, status, vendor or id. Filters live in the URL so a view can be shared. |
-| `/robots/:robotId` | Live details, battery and a state timeline for the last hour, day, week or month, and the last 10 minutes of its path |
+| `/robots/:robotId` | Live details, battery and a state timeline for the last hour, day, week or month and the last 10 minutes of its path |
 
-Live views refetch every 5s and show how long ago they updated, so a stalled feed is visible. Charts refetch every minute.
+Live views refetch every 5s and show how long ago they updated, so a stalled feed is visible. Charts refetch about once per point, at most every 10s.
 
 ## Run
 
@@ -23,6 +23,10 @@ npm install
 ```bash
 npm run dev
 ```
+
+## Tests
+
+None yet. `npm run lint` and the TypeScript build are the checks. The pages are thin over a tested API, so UI tests were the first thing cut for time.
 
 ## API client
 

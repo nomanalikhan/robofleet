@@ -19,6 +19,7 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import { http } from './http';
 export interface ActivityPoint {
   ts: string;
   battery_pct: number;
@@ -214,6 +215,10 @@ from?: string | null;
 to?: string | null;
 };
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
 /**
  * @summary List Sites
  */
@@ -227,20 +232,14 @@ export const getListSitesUrl = () => {
 
 export const listSites = async ( options?: RequestInit): Promise<Site[]> => {
   
-  const res = await fetch(getListSitesUrl(),
+  return http<Site[]>(getListSitesUrl(),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: Site[] = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -253,16 +252,16 @@ export const getListSitesQueryKey = () => {
     }
 
     
-export const getListSitesQueryOptions = <TData = Awaited<ReturnType<typeof listSites>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, fetch?: RequestInit}
+export const getListSitesQueryOptions = <TData = Awaited<ReturnType<typeof listSites>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getListSitesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSites>>> = ({ signal }) => listSites({ signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSites>>> = ({ signal }) => listSites({ signal, ...requestOptions });
 
       
 
@@ -282,7 +281,7 @@ export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TErr
           TError,
           Awaited<ReturnType<typeof listSites>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TError = unknown>(
@@ -292,11 +291,11 @@ export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TErr
           TError,
           Awaited<ReturnType<typeof listSites>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, fetch?: RequestInit}
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -304,7 +303,7 @@ export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TErr
  */
 
 export function useListSites<TData = Awaited<ReturnType<typeof listSites>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, fetch?: RequestInit}
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSites>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -334,20 +333,14 @@ export const getGetSiteUrl = (siteId: string,) => {
 
 export const getSite = async (siteId: string, options?: RequestInit): Promise<Site> => {
   
-  const res = await fetch(getGetSiteUrl(siteId),
+  return http<Site>(getGetSiteUrl(siteId),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: Site = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -360,16 +353,16 @@ export const getGetSiteQueryKey = (siteId?: string,) => {
     }
 
     
-export const getGetSiteQueryOptions = <TData = Awaited<ReturnType<typeof getSite>>, TError = HTTPValidationError>(siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, fetch?: RequestInit}
+export const getGetSiteQueryOptions = <TData = Awaited<ReturnType<typeof getSite>>, TError = HTTPValidationError>(siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGetSiteQueryKey(siteId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSite>>> = ({ signal }) => getSite(siteId, { signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSite>>> = ({ signal }) => getSite(siteId, { signal, ...requestOptions });
 
       
 
@@ -389,7 +382,7 @@ export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError =
           TError,
           Awaited<ReturnType<typeof getSite>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError = HTTPValidationError>(
@@ -399,11 +392,11 @@ export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError =
           TError,
           Awaited<ReturnType<typeof getSite>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError = HTTPValidationError>(
- siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, fetch?: RequestInit}
+ siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -411,7 +404,7 @@ export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError =
  */
 
 export function useGetSite<TData = Awaited<ReturnType<typeof getSite>>, TError = HTTPValidationError>(
- siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, fetch?: RequestInit}
+ siteId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSite>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -452,20 +445,14 @@ export const getGetActivityUrl = (siteId: string,
 export const getActivity = async (siteId: string,
     params?: GetActivityParams, options?: RequestInit): Promise<SiteActivity> => {
   
-  const res = await fetch(getGetActivityUrl(siteId,params),
+  return http<SiteActivity>(getGetActivityUrl(siteId,params),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: SiteActivity = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -480,16 +467,16 @@ export const getGetActivityQueryKey = (siteId?: string,
 
     
 export const getGetActivityQueryOptions = <TData = Awaited<ReturnType<typeof getActivity>>, TError = HTTPValidationError>(siteId: string,
-    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGetActivityQueryKey(siteId,params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivity>>> = ({ signal }) => getActivity(siteId,params, { signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivity>>> = ({ signal }) => getActivity(siteId,params, { signal, ...requestOptions });
 
       
 
@@ -510,7 +497,7 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
           TError,
           Awaited<ReturnType<typeof getActivity>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = HTTPValidationError>(
@@ -521,12 +508,12 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
           TError,
           Awaited<ReturnType<typeof getActivity>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = HTTPValidationError>(
  siteId: string,
-    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -535,7 +522,7 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
 
 export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = HTTPValidationError>(
  siteId: string,
-    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -582,20 +569,14 @@ export const getListRobotsUrl = (params?: ListRobotsParams,) => {
 
 export const listRobots = async (params?: ListRobotsParams, options?: RequestInit): Promise<RobotPage> => {
   
-  const res = await fetch(getListRobotsUrl(params),
+  return http<RobotPage>(getListRobotsUrl(params),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: RobotPage = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -608,16 +589,16 @@ export const getListRobotsQueryKey = (params?: ListRobotsParams,) => {
     }
 
     
-export const getListRobotsQueryOptions = <TData = Awaited<ReturnType<typeof listRobots>>, TError = HTTPValidationError>(params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, fetch?: RequestInit}
+export const getListRobotsQueryOptions = <TData = Awaited<ReturnType<typeof listRobots>>, TError = HTTPValidationError>(params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getListRobotsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRobots>>> = ({ signal }) => listRobots(params, { signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRobots>>> = ({ signal }) => listRobots(params, { signal, ...requestOptions });
 
       
 
@@ -637,7 +618,7 @@ export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TE
           TError,
           Awaited<ReturnType<typeof listRobots>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TError = HTTPValidationError>(
@@ -647,11 +628,11 @@ export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TE
           TError,
           Awaited<ReturnType<typeof listRobots>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TError = HTTPValidationError>(
- params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, fetch?: RequestInit}
+ params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -659,7 +640,7 @@ export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TE
  */
 
 export function useListRobots<TData = Awaited<ReturnType<typeof listRobots>>, TError = HTTPValidationError>(
- params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, fetch?: RequestInit}
+ params?: ListRobotsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRobots>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -689,20 +670,14 @@ export const getGetRobotUrl = (robotId: string,) => {
 
 export const getRobot = async (robotId: string, options?: RequestInit): Promise<Robot> => {
   
-  const res = await fetch(getGetRobotUrl(robotId),
+  return http<Robot>(getGetRobotUrl(robotId),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: Robot = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -715,16 +690,16 @@ export const getGetRobotQueryKey = (robotId?: string,) => {
     }
 
     
-export const getGetRobotQueryOptions = <TData = Awaited<ReturnType<typeof getRobot>>, TError = HTTPValidationError>(robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, fetch?: RequestInit}
+export const getGetRobotQueryOptions = <TData = Awaited<ReturnType<typeof getRobot>>, TError = HTTPValidationError>(robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGetRobotQueryKey(robotId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRobot>>> = ({ signal }) => getRobot(robotId, { signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRobot>>> = ({ signal }) => getRobot(robotId, { signal, ...requestOptions });
 
       
 
@@ -744,7 +719,7 @@ export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError
           TError,
           Awaited<ReturnType<typeof getRobot>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError = HTTPValidationError>(
@@ -754,11 +729,11 @@ export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError
           TError,
           Awaited<ReturnType<typeof getRobot>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError = HTTPValidationError>(
- robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, fetch?: RequestInit}
+ robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -766,7 +741,7 @@ export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError
  */
 
 export function useGetRobot<TData = Awaited<ReturnType<typeof getRobot>>, TError = HTTPValidationError>(
- robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, fetch?: RequestInit}
+ robotId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRobot>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -809,20 +784,14 @@ export const getGetTelemetryUrl = (robotId: string,
 export const getTelemetry = async (robotId: string,
     params?: GetTelemetryParams, options?: RequestInit): Promise<Telemetry> => {
   
-  const res = await fetch(getGetTelemetryUrl(robotId,params),
+  return http<Telemetry>(getGetTelemetryUrl(robotId,params),
   {      
     ...options,
     method: 'GET'
     
     
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: Telemetry = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -837,16 +806,16 @@ export const getGetTelemetryQueryKey = (robotId?: string,
 
     
 export const getGetTelemetryQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetry>>, TError = HTTPValidationError>(robotId: string,
-    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, request?: SecondParameter<typeof http>}
 ) => {
 
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGetTelemetryQueryKey(robotId,params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetry>>> = ({ signal }) => getTelemetry(robotId,params, { signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetry>>> = ({ signal }) => getTelemetry(robotId,params, { signal, ...requestOptions });
 
       
 
@@ -867,7 +836,7 @@ export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>
           TError,
           Awaited<ReturnType<typeof getTelemetry>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>, TError = HTTPValidationError>(
@@ -878,12 +847,12 @@ export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>
           TError,
           Awaited<ReturnType<typeof getTelemetry>>
         > , 'initialData'
-      >, fetch?: RequestInit}
+      >, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>, TError = HTTPValidationError>(
  robotId: string,
-    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -892,7 +861,7 @@ export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>
 
 export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>, TError = HTTPValidationError>(
  robotId: string,
-    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, fetch?: RequestInit}
+    params?: GetTelemetryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>>, request?: SecondParameter<typeof http>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

@@ -61,7 +61,7 @@ export default function SitePage() {
       <SimpleGrid cols={{ base: 2, md: 4 }}>
         <Stat title="Robots" value={total} hint={vendors.map((v) => `${v.value} ${v.name}`).join(' · ')} />
         <Stat title="Healthy" value={healthy} hint={`${total ? Math.round((healthy / total) * 100) : 0}% of the site`} />
-        <Stat title="Need attention" value={<Text inherit c={attention.length ? 'red.5' : undefined}>{attention.length}</Text>} hint="error, stuck, low battery, offline" />
+        <Stat title="Need attention" value={<Text inherit c={attention.length ? 'red.5' : undefined}>{attention.length}</Text>} hint="error, stuck, low battery, offline, unknown" />
         <Stat title="Average battery" value={avgBattery == null ? '–' : `${Math.round(avgBattery)}%`} hint="across reporting robots" />
       </SimpleGrid>
 
@@ -74,8 +74,7 @@ export default function SitePage() {
         </Paper>
         <Paper withBorder p="md">
           <Text fw={600} mb="sm">Health right now</Text>
-          <BarChart h={200} data={health} dataKey="status" series={[{ name: 'robots', color: 'teal.6' }]}
-            getBarColor={(_, d) => (d as { color?: string })?.color ?? 'teal.6'} withTooltip={false} />
+          <BarChart h={200} data={health} dataKey="status" series={[{ name: 'robots', color: 'teal.6' }]} withTooltip={false} />
         </Paper>
       </SimpleGrid>
 
@@ -108,6 +107,7 @@ export default function SitePage() {
             <Legend colors={Object.fromEntries(Object.entries(STATUS_COLORS).filter(([k]) => k !== 'unknown'))} />
           </Group>
           <FloorMap robots={items} />
+          <Text size="xs" c="dimmed" mt="xs">positions in each robot's own map frame, metres</Text>
         </Paper>
         <Paper withBorder p="md">
           <Text fw={600} mb="sm">Needs attention</Text>

@@ -83,7 +83,7 @@ export default function RobotPage() {
               <Text size="sm" fw={600}>State over time</Text>
               <Legend colors={STATE_COLORS} />
             </Group>
-            <StateTimeline points={points} from={from} to={to} />
+            <StateTimeline points={points} from={from} to={to} bucket={bucket} />
           </Stack>
         ) : (
           <Text c="dimmed" size="sm">{telemetry.isLoading ? 'Loading…' : 'No readings in this period.'}</Text>
@@ -116,22 +116,24 @@ function BatteryTooltip({ point, bucket }: { point?: BatteryPoint; bucket?: numb
 }
 
 /** One colored band per stretch of time the robot spent in a state. */
-function StateTimeline({ points, from, to }: { points: TelemetryPoint[]; from: number; to: number }) {
+function StateTimeline({ points, from, to, bucket }: { points: TelemetryPoint[]; from: number; to: number; bucket?: number | null }) {
   const span = to - from
+  // Each reading covers its bucket, so the current state has width and bands do not lag.
+  const width = (bucket ?? 1) * 1000
   const stretches: { state: TelemetryPointState; from: number; to: number }[] = []
   for (const p of points) {
     const t = dayjs(p.ts).valueOf()
     const last = stretches[stretches.length - 1]
-    if (last && last.state === p.state) last.to = t
-    else {
-      if (last) last.to = t
-      stretches.push({ state: p.state, from: t, to: t })
-    }
+    if (last && last.state === p.state) last.to = t + width
+    else stretches.push({ state: p.state, from: t, to: t + width })
   }
+  const last = stretches[stretches.length - 1]
+  if (last) last.to = Math.min(last.to, to)
+  const fmt = bucket ? 'HH:mm' : 'HH:mm:ss'
   return (
     <div style={{ position: 'relative', height: 28, borderRadius: 6, overflow: 'hidden', background: 'var(--mantine-color-dark-6)' }}>
       {stretches.map((s) => (
-        <Tooltip key={s.from} label={`${s.state}, ${dayjs(s.from).format('HH:mm')} to ${dayjs(s.to).format('HH:mm')}`}>
+        <Tooltip key={s.from} label={`${s.state}, ${dayjs(s.from).format(fmt)} to ${dayjs(s.to).format(fmt)}`}>
           <div style={{
             position: 'absolute', top: 0, bottom: 0,
             left: `${Math.max(0, ((s.from - from) / span) * 100)}%`,

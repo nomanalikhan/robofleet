@@ -10,7 +10,10 @@ export default defineConfig({
       client: 'react-query',
       httpClient: 'fetch',
       // explode sends list filters as repeated params, ?status=error&status=stuck.
-      override: { fetch: { includeHttpResponseReturnType: false, explode: true } },
+      override: {
+        mutator: { path: 'src/api/http.ts', name: 'http' },
+        fetch: { includeHttpResponseReturnType: false, explode: true },
+      },
     },
   },
 })

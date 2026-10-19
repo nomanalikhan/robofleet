@@ -1,7 +1,7 @@
 import { Anchor, Group, MultiSelect, Pagination, Paper, Progress, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconSearch } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useListRobots, useListSites, type ListRobotsParams, type RobotStatus } from '../api/fleet'
@@ -16,7 +16,7 @@ export default function RobotsPage() {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') ?? '')
   const [q] = useDebouncedValue(search, 300)
-  const page = Number(params.get('page') ?? 1)
+  const page = Math.max(1, Number(params.get('page')) || 1)
 
   // Each filter is a repeated param, ?status=error&status=stuck, the same shape the API takes.
   const set = (key: string, values: string[]) => {
@@ -26,6 +26,11 @@ export default function RobotsPage() {
     if (key !== 'page') next.delete('page')
     setParams(next, { replace: true })
   }
+  // Only when the debounced text differs, so a shared ?page= link is not reset on load.
+  useEffect(() => {
+    if (q !== (params.get('q') ?? '')) set('q', q ? [q] : [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q])
 
   const filters: ListRobotsParams = {
     site_id: params.getAll('site_id'),
@@ -71,6 +76,7 @@ export default function RobotsPage() {
       </Group>
 
       <Paper withBorder>
+        <Table.ScrollContainer minWidth={900}>
         <Table highlightOnHover verticalSpacing="sm">
           <Table.Thead>
             <Table.Tr>
@@ -106,6 +112,7 @@ export default function RobotsPage() {
             ))}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
         {!items.length && <Text c="dimmed" p="lg" ta="center">{robots.isLoading ? 'Loading…' : 'No robots match these filters.'}</Text>}
       </Paper>
 

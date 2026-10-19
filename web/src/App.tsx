@@ -1,6 +1,8 @@
-import { AppShell, Group, NavLink, Stack, Text, Title } from '@mantine/core'
+import { Alert, Anchor, AppShell, Burger, Group, NavLink, Stack, Text, Title } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { IconBuildingFactory2, IconRobot } from '@tabler/icons-react'
-import { Navigate, NavLink as RouterLink, Route, Routes } from 'react-router-dom'
+import { Component, useEffect, type ReactNode } from 'react'
+import { Link, Navigate, NavLink as RouterLink, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useListSites } from './api/fleet'
 import { LIVE } from './theme'
@@ -12,12 +14,26 @@ import SitePage from './pages/SitePage'
 export default function App() {
   const sites = useListSites({ query: LIVE })
   const first = sites.data?.[0]?.id
+  const [opened, { toggle, close }] = useDisclosure()
+  const { pathname } = useLocation()
+  useEffect(close, [pathname, close])
 
   return (
-    <AppShell navbar={{ width: 240, breakpoint: 'sm' }} padding="lg">
+    <AppShell
+      // The header only exists on small screens, where it holds the burger.
+      header={{ height: { base: 48, sm: 0 } }}
+      navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+      padding="lg"
+    >
+      <AppShell.Header hiddenFrom="sm" px="md">
+        <Group h="100%" gap="sm">
+          <Burger opened={opened} onClick={toggle} size="sm" aria-label="Toggle navigation" />
+          <Title order={4}>Olivaw Fleet</Title>
+        </Group>
+      </AppShell.Header>
       <AppShell.Navbar p="md">
         <Stack gap="xs">
-          <Title order={4} mb="sm">Olivaw Fleet</Title>
+          <Title order={4} mb="sm" visibleFrom="sm">Olivaw Fleet</Title>
           <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Sites</Text>
           {sites.data?.map((s) => (
             <NavLink
@@ -34,13 +50,31 @@ export default function App() {
         </Stack>
       </AppShell.Navbar>
       <AppShell.Main>
-        <Routes>
-          <Route path="/" element={first ? <Navigate to={`/sites/${first}`} replace /> : <Group>Loading sites…</Group>} />
-          <Route path="/sites/:siteId" element={<SitePage />} />
-          <Route path="/robots" element={<RobotsPage />} />
-          <Route path="/robots/:robotId" element={<RobotPage />} />
-        </Routes>
+        <ErrorBoundary key={pathname}>
+          <Routes>
+            <Route path="/" element={first ? <Navigate to={`/sites/${first}`} replace /> : <Group>Loading sites…</Group>} />
+            <Route path="/sites/:siteId" element={<SitePage />} />
+            <Route path="/robots" element={<RobotsPage />} />
+            <Route path="/robots/:robotId" element={<RobotPage />} />
+          </Routes>
+        </ErrorBoundary>
       </AppShell.Main>
     </AppShell>
   )
+}
+
+// Keyed on the path, so navigating away from a broken page resets it.
+class ErrorBoundary extends Component<{ children: ReactNode }, { error?: Error }> {
+  state: { error?: Error } = {}
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <Alert color="red" title="Something went wrong">
+        {this.state.error.message} <Anchor component={Link} to="/">Back to the fleet</Anchor>
+      </Alert>
+    )
+  }
 }
