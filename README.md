@@ -66,7 +66,7 @@ That runs the Go and Python tests inside the service images, so nothing needs in
 - **Security.** No auth, no TLS, one shared demo user on RabbitMQ and plain text credentials in compose.
 - **UI tests.** The simulator, gateway, ingest and API have tests and `make test` runs them. The UI has type checking and lint only. Its logic is thin and the API it renders is tested, so UI tests were the first thing cut.
 
-## With more time or in production
+## What comes next
 
 - **Commands** as designed above, with `POST /commands` for one or many robots answered `202` and a status per robot.
 - **Auth and tenancy.** Users and roles on the API, per-site broker credentials and TLS on the uplink.
