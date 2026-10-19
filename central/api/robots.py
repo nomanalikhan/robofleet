@@ -12,19 +12,21 @@ from periods import MAX_RANGE, PERIODS, Period, bucket_for
 
 router = APIRouter(prefix="/robots", tags=["robots"])
 
+
 @router.get("")
 async def list_robots(
     db: Db,
-    site_id: str | None = None,
-    status: RobotStatus | None = None,
-    vendor: str | None = None,
+    site_id: Annotated[list[str], Query()] = [],
+    status: Annotated[list[RobotStatus], Query()] = [],
+    vendor: Annotated[list[str], Query()] = [],
     q: Annotated[str | None, Query(description="part of the robot id")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RobotPage:
-    """Robots with their newest reading and health, worst problems first."""
+    """Robots with their newest reading and health, worst problems first.
+    Repeat `site_id`, `status` or `vendor` to match any of several values."""
     rows = await health.robots(
-        db, site_id=site_id, status=status, vendor=vendor, q=q, limit=limit, offset=offset,
+        db, site_ids=site_id or None, statuses=status or None, vendors=vendor or None, q=q, limit=limit, offset=offset,
     )
     return RobotPage(items=[Robot(**r) for r in rows], total=rows[0]["total"] if rows else 0)
 

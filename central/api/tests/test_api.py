@@ -126,6 +126,11 @@ def test_robot_filters_by_vendor_and_search(client):
     assert [r["id"] for r in robots(client, q="DOCK")["items"]] == ["rv-dock"]
 
 
+def test_robot_filters_take_several_values(client):
+    assert robots(client, site_id=["site-2", "site-3"])["total"] == 2
+    assert [r["id"] for r in robots(client, status=["error", "stuck"])["items"]] == ["rv-err", "rv-stuck"]
+
+
 def test_site_activity_counts_robots_by_state(client):
     a = client.get("/api/v1/sites/site-1/activity", params={"period": "hour"}).json()
     assert a["bucket_s"] == 60

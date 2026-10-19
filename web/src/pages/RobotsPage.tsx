@@ -1,4 +1,4 @@
-import { Anchor, Group, Pagination, Paper, Progress, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { Anchor, Group, MultiSelect, Pagination, Paper, Progress, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconSearch } from '@tabler/icons-react'
 import { useState } from 'react'
@@ -18,18 +18,19 @@ export default function RobotsPage() {
   const [q] = useDebouncedValue(search, 300)
   const page = Number(params.get('page') ?? 1)
 
-  const set = (key: string, value: string | null) => {
+  // Each filter is a repeated param, ?status=error&status=stuck, the same shape the API takes.
+  const set = (key: string, values: string[]) => {
     const next = new URLSearchParams(params)
-    if (value) next.set(key, value)
-    else next.delete(key)
+    next.delete(key)
+    values.forEach((v) => next.append(key, v))
     if (key !== 'page') next.delete('page')
     setParams(next, { replace: true })
   }
 
   const filters: ListRobotsParams = {
-    site_id: params.get('site_id') ?? undefined,
-    status: (params.get('status') as RobotStatus) ?? undefined,
-    vendor: params.get('vendor') ?? undefined,
+    site_id: params.getAll('site_id'),
+    status: params.getAll('status') as RobotStatus[],
+    vendor: params.getAll('vendor'),
     q: q || undefined,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
@@ -57,15 +58,15 @@ export default function RobotsPage() {
           value={search}
           onChange={(e) => {
             setSearch(e.currentTarget.value)
-            set('page', null)
+            set('page', [])
           }}
           w={220}
         />
-        <Select placeholder="All sites" clearable w={160} value={filters.site_id ?? null}
+        <MultiSelect placeholder={filters.site_id?.length ? undefined : 'All sites'} clearable miw={160} value={filters.site_id}
           data={sites.data?.map((s) => s.id) ?? []} onChange={(v) => set('site_id', v)} />
-        <Select placeholder="Any status" clearable w={160} value={filters.status ?? null}
+        <MultiSelect placeholder={filters.status?.length ? undefined : 'Any status'} clearable miw={160} value={filters.status}
           data={STATUSES.map((s) => ({ value: s, label: label(s) }))} onChange={(v) => set('status', v)} />
-        <Select placeholder="Any vendor" clearable w={160} value={filters.vendor ?? null}
+        <MultiSelect placeholder={filters.vendor?.length ? undefined : 'Any vendor'} clearable miw={160} value={filters.vendor}
           data={vendors} onChange={(v) => set('vendor', v)} />
       </Group>
 
@@ -109,7 +110,7 @@ export default function RobotsPage() {
       </Paper>
 
       {total > PAGE_SIZE && (
-        <Pagination value={page} total={Math.ceil(total / PAGE_SIZE)} onChange={(p) => set('page', String(p))} />
+        <Pagination value={page} total={Math.ceil(total / PAGE_SIZE)} onChange={(p) => set('page', [String(p)])} />
       )}
     </Stack>
   )

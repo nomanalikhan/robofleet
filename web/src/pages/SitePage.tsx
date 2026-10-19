@@ -15,7 +15,7 @@ export default function SitePage() {
   const { siteId = '' } = useParams()
   const [period, setPeriod] = useState<GetActivityPeriod>('hour')
   const site = useGetSite(siteId, { query: LIVE })
-  const robots = useListRobots({ site_id: siteId, limit: 500 }, { query: LIVE })
+  const robots = useListRobots({ site_id: [siteId], limit: 500 }, { query: LIVE })
   const activity = useGetActivity(siteId, { period }, { query: { refetchInterval: chartRefetch } })
 
   if (site.isError) return <Alert color="red" title="Site not found">No site called {siteId}.</Alert>

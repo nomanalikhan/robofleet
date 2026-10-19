@@ -16,7 +16,7 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 
 
 async def site_list(db: asyncpg.Pool, site_id: str | None = None) -> list[Site]:
-    robots = await health.robots(db, site_id=site_id)
+    robots = await health.robots(db, site_ids=[site_id] if site_id else None)
     statuses = Counter((r["site_id"], r["status"]) for r in robots)
     vendors = Counter((r["site_id"], r["vendor"]) for r in robots)
     return [

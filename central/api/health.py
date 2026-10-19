@@ -69,10 +69,10 @@ ROBOTS = """
                END AS problems
     ) p
     CROSS JOIN LATERAL (SELECT p.problems, coalesce(p.problems[1], 'ok') AS status) h
-    WHERE ($6::text IS NULL OR r.site_id = $6)
+    WHERE ($6::text[] IS NULL OR r.site_id = ANY($6))
       AND ($7::text IS NULL OR r.id = $7)
-      AND ($8::text IS NULL OR h.status = $8)
-      AND ($11::text IS NULL OR r.vendor = $11)
+      AND ($8::text[] IS NULL OR h.status = ANY($8))
+      AND ($11::text[] IS NULL OR r.vendor = ANY($11))
       AND ($12::text IS NULL OR r.id ILIKE '%' || $12 || '%')
     ORDER BY array_position($5::text[], h.status), r.id
     LIMIT $9 OFFSET $10
@@ -85,15 +85,15 @@ async def sites(db: asyncpg.Pool, site_id: str | None = None) -> list[asyncpg.Re
 
 async def robots(
     db: asyncpg.Pool,
-    site_id: str | None = None,
+    site_ids: list[str] | None = None,
     robot_id: str | None = None,
-    status: str | None = None,
-    vendor: str | None = None,
+    statuses: list[str] | None = None,
+    vendors: list[str] | None = None,
     q: str | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[asyncpg.Record]:
     return await db.fetch(
         ROBOTS, OFFLINE_S, LOW_BATTERY_PCT, STUCK_S, STUCK_M, SEVERITY,
-        site_id, robot_id, status, limit, offset, vendor, q,
+        site_ids, robot_id, statuses, limit, offset, vendors, q,
     )

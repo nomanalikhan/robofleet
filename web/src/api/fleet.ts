@@ -177,9 +177,9 @@ export const GetActivityPeriod = {
 } as const;
 
 export type ListRobotsParams = {
-site_id?: string | null;
-status?: 'unknown' | 'offline' | 'error' | 'stuck' | 'low_battery' | 'ok' | null;
-vendor?: string | null;
+site_id?: string[];
+status?: ListRobotsStatusItem[];
+vendor?: string[];
 /**
  * part of the robot id
  */
@@ -194,6 +194,19 @@ limit?: number;
  */
 offset?: number;
 };
+
+export type ListRobotsStatusItem = typeof ListRobotsStatusItem[keyof typeof ListRobotsStatusItem];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ListRobotsStatusItem = {
+  unknown: 'unknown',
+  offline: 'offline',
+  error: 'error',
+  stuck: 'stuck',
+  low_battery: 'low_battery',
+  ok: 'ok',
+} as const;
 
 export type GetTelemetryParams = {
 period?: 'hour' | 'day' | 'week' | 'month' | null;
@@ -541,13 +554,22 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
 
 /**
  * Robots with their newest reading and health, worst problems first.
+Repeat `site_id`, `status` or `vendor` to match any of several values.
  * @summary List Robots
  */
 export const getListRobotsUrl = (params?: ListRobotsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+    const explodeParameters = ["site_id","status","vendor"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : v.toString());
+      });
+      return;
+    }
+      
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }

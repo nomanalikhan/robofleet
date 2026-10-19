@@ -9,7 +9,8 @@ export default defineConfig({
       target: 'src/api/fleet.ts',
       client: 'react-query',
       httpClient: 'fetch',
-      override: { fetch: { includeHttpResponseReturnType: false } },
+      // explode sends list filters as repeated params, ?status=error&status=stuck.
+      override: { fetch: { includeHttpResponseReturnType: false, explode: true } },
     },
   },
 })
