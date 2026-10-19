@@ -15,7 +15,7 @@ From the repo root.
 ROVO_COUNT=5 CLEANIX_COUNT=5 docker compose up -d --build
 ```
 
-Here the counts are robots per type, 5 of each by default. Compose turns `CLEANIX_COUNT` into that many containers. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `olivaw-site1-bot-cleanix-3`, so robots keep their serial when containers are recreated.
+Here the counts are robots per type for site 1, 5 of each by default. Site 2 is fixed at 3 Rovo and 2 Cleanix in compose. Compose turns `CLEANIX_COUNT` into that many containers, up to the 50 host ports it publishes. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `olivaw-site1-bot-cleanix-3`, so robots keep their serial when containers are recreated.
 
 ## Config
 
@@ -34,7 +34,7 @@ Env of one botsim process. Compose sets the counts and passes the rest through.
 | `CHAOS_STUCK_RATE` | 0.001 | Reports working but stops moving |
 | `CHAOS_DROPOUT_RATE` | 0.0005 | Goes silent for 15 to 90s |
 | `CHAOS_DELAY_RATE` | 0.03 | Sends a reading 1 to 4s late |
-| `SEED` | random | Fix it for repeatable runs |
+| `SEED` | random, logged at start | Fix it to replay the same serials and chaos sequence. Paths still follow wall clock time. |
 
 ## Check it
 
@@ -50,7 +50,7 @@ curl -s "$(docker compose port --index 1 site1-bot-cleanix 8080)/api/v1/status"
 
 ## Wire formats
 
-Robots report only what a robot knows. No site, no floor, and serials like `rv-3f9a21` carry no location. Positions are in the robot's own map frame.
+Robots report only what a robot knows. No site, no floor and serials like `rv-3f9a21` carry no location. Positions are in the robot's own map frame.
 
 | | Rovo | Cleanix |
 |---|---|---|

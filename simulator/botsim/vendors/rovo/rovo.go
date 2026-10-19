@@ -110,7 +110,7 @@ func (v *Vendor) Spec() robot.Spec {
 }
 
 // Connect gives the robot its own MQTT client, like a real robot would have.
-func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func()) {
+func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func(), error) {
 	online := topic(u.ID, "online")
 	opts := mqtt.NewClientOptions().
 		AddBroker(v.brokerURL).
@@ -127,6 +127,14 @@ func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func()) {
 			handleCommand(c, u, m.Payload())
 		})
 	})
+	opts.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
+		slog.Warn("rovo robot lost broker connection", "robot", u.ID, "err", err)
+	})
+	// AddBroker drops a URL it cannot parse, and Connect would then fail in
+	// the background. Everything else retries until the broker is up.
+	if len(opts.Servers) == 0 {
+		return nil, nil, fmt.Errorf("mqtt connect: invalid broker url %q", v.brokerURL)
+	}
 	c := mqtt.NewClient(opts)
 	c.Connect() // retries in the background until the broker is up
 
@@ -143,7 +151,7 @@ func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func()) {
 		c.Publish(online, 1, true, "0").WaitTimeout(time.Second)
 		c.Disconnect(250)
 	}
-	return publish, disconnect
+	return publish, disconnect, nil
 }
 
 func handleCommand(c mqtt.Client, u *runner.Unit, payload []byte) {

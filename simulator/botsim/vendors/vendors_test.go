@@ -51,8 +51,12 @@ func TestSerialsSurviveRestart(t *testing.T) {
 	serials := func() []string {
 		sim := runner.New("t", robot.Map{Width: 10, Height: 10}, time.Hour, 1, robot.Chaos{}, runner.Link{})
 		defer sim.Stop()
+		units, err := sim.Start(cleanix.New("127.0.0.1:0"), 3)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var out []string
-		for _, u := range sim.Start(cleanix.New("127.0.0.1:0"), 3) {
+		for _, u := range units {
 			out = append(out, u.ID)
 		}
 		return out

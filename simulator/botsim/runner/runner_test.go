@@ -14,25 +14,49 @@ type fakeVendor struct{ published, disconnected atomic.Int32 }
 
 func (v *fakeVendor) IDPrefix() string { return "fk" }
 func (v *fakeVendor) Spec() robot.Spec { return robot.Spec{Speed: 1} }
-func (v *fakeVendor) Connect(*Unit) (func(robot.Snapshot), func()) {
-	return func(robot.Snapshot) { v.published.Add(1) }, func() { v.disconnected.Add(1) }
+func (v *fakeVendor) Connect(*Unit) (func(robot.Snapshot), func(), error) {
+	return func(robot.Snapshot) { v.published.Add(1) }, func() { v.disconnected.Add(1) }, nil
 }
 
 const tick = 10 * time.Millisecond
 
-func start(link Link, n int) (*Runner, *fakeVendor, []*Unit) {
+func start(t *testing.T, link Link, n int) (*Runner, *fakeVendor, []*Unit) {
+	t.Helper()
 	v := &fakeVendor{}
 	rn := New("t", robot.Map{Width: 10, Height: 10}, tick, 1, robot.Chaos{}, link)
-	return rn, v, rn.Start(v, n)
+	units, err := rn.Start(v, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rn, v, units
+}
+
+// eventually polls cond once per tick until it holds or a second has passed.
+func eventually(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %s", what)
+		}
+		time.Sleep(tick)
+	}
+}
+
+// ticked reports whether every unit has produced at least n readings.
+func ticked(units []*Unit, n uint64) bool {
+	for _, u := range units {
+		if s := u.Latest(); s == nil || s.Seq < n {
+			return false
+		}
+	}
+	return true
 }
 
 func TestDropoutSilencesRobotAndRefusesCommands(t *testing.T) {
-	rn, v, units := start(Link{DropoutRate: 1}, 1)
+	rn, v, units := start(t, Link{DropoutRate: 1}, 1)
 	defer rn.Stop()
-	time.Sleep(5 * tick)
-	if units[0].Online() {
-		t.Fatal("robot should be offline")
-	}
+	eventually(t, "robot to go offline", func() bool { return ticked(units, 1) && !units[0].Online() })
 	if n := v.published.Load(); n != 0 {
 		t.Fatalf("published %d readings while offline", n)
 	}
@@ -42,17 +66,17 @@ func TestDropoutSilencesRobotAndRefusesCommands(t *testing.T) {
 }
 
 func TestDelayHoldsReadingsBack(t *testing.T) {
-	rn, v, _ := start(Link{DelayRate: 1}, 1)
+	rn, v, units := start(t, Link{DelayRate: 1}, 1)
 	defer rn.Stop()
-	time.Sleep(5 * tick)
+	eventually(t, "five ticks", func() bool { return ticked(units, 5) })
 	if n := v.published.Load(); n != 0 {
 		t.Fatalf("published %d readings, want all held back by at least 1s", n)
 	}
 }
 
 func TestStopDisconnectsEveryRobot(t *testing.T) {
-	rn, v, units := start(Link{}, 50)
-	time.Sleep(3 * tick)
+	rn, v, units := start(t, Link{}, 50)
+	eventually(t, "every robot to tick", func() bool { return ticked(units, 1) })
 	rn.Stop()
 	if n := v.disconnected.Load(); n != 50 {
 		t.Fatalf("disconnected %d robots, want 50", n)

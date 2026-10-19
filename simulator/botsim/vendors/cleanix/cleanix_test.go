@@ -2,6 +2,7 @@ package cleanix
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,12 +13,23 @@ import (
 	"olivaw/simulator/botsim/runner"
 )
 
+func newSim() *runner.Runner {
+	return runner.New("t", robot.Map{Width: 10, Height: 10}, 10*time.Millisecond, 1, robot.Chaos{}, runner.Link{})
+}
+
 func TestRobotAPI(t *testing.T) {
 	v := New("127.0.0.1:0")
-	sim := runner.New("t", robot.Map{Width: 10, Height: 10}, 10*time.Millisecond, 1, robot.Chaos{}, runner.Link{})
-	u := sim.Start(v, 1)[0]
+	sim := newSim()
 	defer sim.Stop()
-	for u.Latest() == nil {
+	units, err := sim.Start(v, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := units[0]
+	for deadline := time.Now().Add(time.Second); u.Latest() == nil; {
+		if time.Now().After(deadline) {
+			t.Fatal("robot never ticked")
+		}
 		time.Sleep(5 * time.Millisecond)
 	}
 	srv := httptest.NewServer(v.handler(u))
@@ -37,6 +49,19 @@ func TestRobotAPI(t *testing.T) {
 		if err != nil || res.StatusCode != want {
 			t.Fatalf("go_home = %v %v, want %d", res.StatusCode, err, want)
 		}
+	}
+}
+
+func TestStartFailsWhenPortInUse(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	sim := newSim()
+	defer sim.Stop()
+	if _, err := sim.Start(New(ln.Addr().String()), 1); err == nil {
+		t.Fatalf("Start on busy %s succeeded, want an error", ln.Addr())
 	}
 }
 

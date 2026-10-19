@@ -24,8 +24,9 @@ type Vendor interface {
 	// Connect wires one robot to the vendor's transport before its first tick.
 	// publish is called with every reading the link delivers. disconnect runs
 	// after the robot has stopped. Either may be nil, for example publish for
-	// vendors whose robots are polled.
-	Connect(u *Unit) (publish func(robot.Snapshot), disconnect func())
+	// vendors whose robots are polled. A non-nil error means the robot could
+	// not be wired up and must not run.
+	Connect(u *Unit) (publish func(robot.Snapshot), disconnect func(), err error)
 }
 
 // Link is chaos on the robot's connection rather than its behavior. Rates are
@@ -109,7 +110,11 @@ type Runner struct {
 	serials map[string]bool
 }
 
+// New builds a runner. tick must be positive.
 func New(simID string, area robot.Map, tick time.Duration, seed int64, chaos robot.Chaos, link Link) *Runner {
+	if tick <= 0 {
+		panic("runner: tick must be positive")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Runner{
 		simID: simID, area: area, tick: tick, seed: seed, chaos: chaos, link: link,
@@ -118,20 +123,24 @@ func New(simID string, area robot.Map, tick time.Duration, seed int64, chaos rob
 }
 
 // Start launches n robots of one vendor and returns them. Serials are
-// deterministic, so a restarted simulator brings back the same robots.
-func (rn *Runner) Start(v Vendor, n int) []*Unit {
+// deterministic, so a restarted simulator brings back the same robots. It
+// stops at the first robot that fails to connect and returns that error.
+func (rn *Runner) Start(v Vendor, n int) ([]*Unit, error) {
 	out := make([]*Unit, 0, n)
 	for i := 1; i <= n; i++ {
 		id := rn.serial(v, i)
 		u := &Unit{ID: id, cmds: make(chan cmdReq), stop: rn.ctx.Done()}
 		u.online.Store(true)
 		r := robot.New(id, v.Spec(), rn.area, rn.chaos, rn.seed^idHash(id))
-		publish, disconnect := v.Connect(u)
+		publish, disconnect, err := v.Connect(u)
+		if err != nil {
+			return out, fmt.Errorf("connect %s: %w", id, err)
+		}
 		rn.wg.Add(1)
 		go rn.run(u, r, publish, disconnect)
 		out = append(out, u)
 	}
-	return out
+	return out, nil
 }
 
 // Stop halts every robot at once and waits for them to disconnect.
@@ -177,7 +186,18 @@ func (rn *Runner) run(u *Unit, r *robot.Robot, publish func(robot.Snapshot), dis
 				continue
 			}
 			if roll(link, rn.link.DelayRate) {
-				time.AfterFunc(jitter(link, 1, 4), func() { publish(snap) })
+				// Stop waits for late readings so none is published after
+				// the robot has disconnected.
+				rn.wg.Add(1)
+				time.AfterFunc(jitter(link, 1, 4), func() {
+					defer rn.wg.Done()
+					select {
+					case <-rn.ctx.Done():
+						return
+					default:
+					}
+					publish(snap)
+				})
 				continue
 			}
 			publish(snap)

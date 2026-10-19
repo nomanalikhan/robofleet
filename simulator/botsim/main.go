@@ -47,13 +47,18 @@ func main() {
 	seed := env("SEED", time.Now().UnixNano(), func(s string) (int64, error) { return strconv.ParseInt(s, 10, 64) })
 	simID := serialNamespace()
 
-	sim := runner.New(simID, area, tick, seed, chaos, link)
-	sim.Start(rovo.New(env("MQTT_URL", "tcp://localhost:1883", str)), rovoCount)
-	sim.Start(cleanix.New(env("CLEANIX_ADDR", ":8080", str)), cleanixCount)
-	slog.Info("botsim running", "sim", simID, "rovo", rovoCount, "cleanix", cleanixCount, "chaos", chaos, "link", link)
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	sim := runner.New(simID, area, tick, seed, chaos, link)
+	if _, err := sim.Start(rovo.New(env("MQTT_URL", "tcp://localhost:1883", str)), rovoCount); err != nil {
+		fatal(err.Error())
+	}
+	if _, err := sim.Start(cleanix.New(env("CLEANIX_ADDR", ":8080", str)), cleanixCount); err != nil {
+		fatal(err.Error())
+	}
+	slog.Info("botsim running", "sim", simID, "seed", seed, "rovo", rovoCount, "cleanix", cleanixCount, "chaos", chaos, "link", link)
+
 	<-ctx.Done()
 
 	slog.Info("shutting down")

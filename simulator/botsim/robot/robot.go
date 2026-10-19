@@ -23,7 +23,22 @@ const (
 )
 
 func (s State) String() string {
-	return [...]string{"idle", "working", "returning", "charging", "paused", "error"}[s]
+	switch s {
+	case Idle:
+		return "idle"
+	case Working:
+		return "working"
+	case Returning:
+		return "returning"
+	case Charging:
+		return "charging"
+	case Paused:
+		return "paused"
+	case Error:
+		return "error"
+	default:
+		return fmt.Sprintf("State(%d)", int(s))
+	}
 }
 
 type Fault int
@@ -36,7 +51,18 @@ const (
 )
 
 func (f Fault) String() string {
-	return [...]string{"none", "wheel_stuck", "bumper_hit", "localization_lost"}[f]
+	switch f {
+	case NoFault:
+		return "none"
+	case WheelStuck:
+		return "wheel_stuck"
+	case BumperHit:
+		return "bumper_hit"
+	case LocalizationLost:
+		return "localization_lost"
+	default:
+		return fmt.Sprintf("Fault(%d)", int(f))
+	}
 }
 
 // Map is the area a robot drives in, in meters. A robot only knows its own map.

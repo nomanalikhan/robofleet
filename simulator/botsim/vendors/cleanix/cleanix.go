@@ -134,20 +134,24 @@ func (v *Vendor) Spec() robot.Spec {
 
 // Connect gives the robot its own HTTP server. Cleanix robots are polled, so
 // there is nothing to publish.
-func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func()) {
+func (v *Vendor) Connect(u *runner.Unit) (func(robot.Snapshot), func(), error) {
 	ln, err := net.Listen("tcp", v.addr)
 	if err != nil {
-		slog.Error("cleanix robot cannot listen", "robot", u.ID, "addr", v.addr, "err", err)
-		return nil, nil
+		return nil, nil, fmt.Errorf("cleanix robot %s cannot listen on %s: %w", u.ID, v.addr, err)
 	}
 	slog.Info("cleanix robot listening", "robot", u.ID, "addr", ln.Addr().String())
 	srv := &http.Server{Handler: v.handler(u), ReadHeaderTimeout: 5 * time.Second}
-	go srv.Serve(ln)
-	return nil, func() {
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("cleanix robot server stopped", "robot", u.ID, "err", err)
+		}
+	}()
+	disconnect := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctx)
 	}
+	return nil, disconnect, nil
 }
 
 // handler serves one robot's API.
