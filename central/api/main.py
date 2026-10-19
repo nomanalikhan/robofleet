@@ -11,7 +11,7 @@ from db import Db, lifespan
 # redoc_url=None because FastAPI's default loads redoc@next, a prerelease that renders a blank page.
 # Operation ids are the route function names, so generated clients get names like useListRobots.
 app = FastAPI(
-    title="Olivaw Fleet API",
+    title="RoboFleet API",
     version="1.0.0",
     lifespan=lifespan,
     redoc_url=None,

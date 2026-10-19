@@ -28,12 +28,12 @@ export default function App() {
       <AppShell.Header hiddenFrom="sm" px="md">
         <Group h="100%" gap="sm">
           <Burger opened={opened} onClick={toggle} size="sm" aria-label="Toggle navigation" />
-          <Title order={4}>Olivaw Fleet</Title>
+          <Title order={4}>RoboFleet</Title>
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="md">
         <Stack gap="xs">
-          <Title order={4} mb="sm" visibleFrom="sm">Olivaw Fleet</Title>
+          <Title order={4} mb="sm" visibleFrom="sm">RoboFleet</Title>
           <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Sites</Text>
           {sites.data?.map((s) => (
             <NavLink

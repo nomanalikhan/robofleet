@@ -1,4 +1,4 @@
-module olivaw/simulator/botsim
+module robofleet/simulator/botsim
 
 go 1.23.0
 

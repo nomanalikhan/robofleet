@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"olivaw/simulator/botsim/robot"
-	"olivaw/simulator/botsim/runner"
-	"olivaw/simulator/botsim/vendors/cleanix"
-	"olivaw/simulator/botsim/vendors/rovo"
+	"robofleet/simulator/botsim/robot"
+	"robofleet/simulator/botsim/runner"
+	"robofleet/simulator/botsim/vendors/cleanix"
+	"robofleet/simulator/botsim/vendors/rovo"
 )
 
 var snap = robot.Snapshot{

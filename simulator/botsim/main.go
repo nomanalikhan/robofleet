@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
-	"olivaw/simulator/botsim/robot"
-	"olivaw/simulator/botsim/runner"
-	"olivaw/simulator/botsim/vendors/cleanix"
-	"olivaw/simulator/botsim/vendors/rovo"
+	"robofleet/simulator/botsim/robot"
+	"robofleet/simulator/botsim/runner"
+	"robofleet/simulator/botsim/vendors/cleanix"
+	"robofleet/simulator/botsim/vendors/rovo"
 )
 
 func main() {
@@ -67,7 +67,7 @@ func main() {
 
 // serialNamespace keeps serials unique across simulator containers and stable
 // across restarts. SIM_ID wins if set. Otherwise it is the container's compose
-// name, like olivaw-site1-bot-cleanix-3, found by a reverse DNS lookup of its own IP. The
+// name, like robofleet-site1-bot-cleanix-3, found by a reverse DNS lookup of its own IP. The
 // Dockerfile ships nsswitch.conf so Docker DNS answers before /etc/hosts. The
 // hostname is the fallback outside Docker.
 func serialNamespace() string {

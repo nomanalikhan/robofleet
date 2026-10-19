@@ -1,10 +1,10 @@
-# Olivaw Fleet
+# RoboFleet
 
 Robots at several sites report their state once a second. This repo gets that data from each site to a central system, stores it and shows a fleet manager what the fleet is doing right now and what it did before.
 
 All three parts of the brief are built and run with one command. Simulated robots from two vendors feed a gateway on each site, the gateway forwards every reading to central and central stores it, derives health and serves a web UI.
 
-![Olivaw architecture. Robots on each site feed a gateway, which forwards batches over AMQP to central RabbitMQ, ingest, TimescaleDB, the Fleet API and the web UI.](architecture.png)
+![RoboFleet architecture. Robots on each site feed a gateway, which forwards batches over AMQP to central RabbitMQ, ingest, TimescaleDB, the Fleet API and the web UI.](architecture.png)
 
 For an interactive version you can zoom and trace paths in, open [docs/architecture.html](docs/architecture.html) in a browser. It is generated from the same source as the image.
 
@@ -20,7 +20,7 @@ make up
 |---|---|
 | Web UI | http://localhost:3000 |
 | Fleet API docs | http://localhost:8000/docs |
-| RabbitMQ management, `olivaw` / `olivaw` | http://localhost:15672 |
+| RabbitMQ management, `robofleet` / `robofleet` | http://localhost:15672 |
 | TimescaleDB | `localhost:5432`, or `make central-db` for psql |
 
 Two sites start. `site-1` has 5 Rovo and 5 Cleanix robots, `site-2` has 3 and 2. The site page fills its charts as history builds up. `ROVO_COUNT` and `CLEANIX_COUNT` resize site 1, and the `CHAOS_*` rates in the [botsim README](simulator/botsim/README.md#config) make faults more frequent.

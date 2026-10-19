@@ -14,8 +14,8 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"olivaw/simulator/botsim/robot"
-	"olivaw/simulator/botsim/runner"
+	"robofleet/simulator/botsim/robot"
+	"robofleet/simulator/botsim/runner"
 )
 
 type Telemetry struct {

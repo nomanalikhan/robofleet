@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"olivaw/simulator/botsim/robot"
-	"olivaw/simulator/botsim/runner"
+	"robofleet/simulator/botsim/robot"
+	"robofleet/simulator/botsim/runner"
 )
 
 const BasePath = "/api/v1"

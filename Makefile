@@ -25,7 +25,7 @@ test-ingest:
 # Needs central-db running, the tests use a throwaway database on it.
 test-api:
 	docker compose run --rm --no-deps --build -v ./central:/central -w /central/api \
-		-e TEST_ADMIN_URL=postgresql://olivaw:olivaw@central-db:5432/postgres central-api pytest -q
+		-e TEST_ADMIN_URL=postgresql://robofleet:robofleet@central-db:5432/postgres central-api pytest -q
 
 # What the site gateway still has to send, and every robot it knows.
 gateway-state:
@@ -33,7 +33,7 @@ gateway-state:
 
 # psql into central TimescaleDB.
 central-db:
-	docker compose exec central-db psql -U olivaw -d fleet
+	docker compose exec central-db psql -U robofleet -d fleet
 
 # Regenerate the UI's API client from the running Fleet API.
 web-api:

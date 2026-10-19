@@ -15,7 +15,7 @@ From the repo root.
 ROVO_COUNT=5 CLEANIX_COUNT=5 docker compose up -d --build
 ```
 
-Here the counts are robots per type for site 1, 5 of each by default. Site 2 is fixed at 3 Rovo and 2 Cleanix in compose. Compose turns `CLEANIX_COUNT` into that many containers, up to the 50 host ports it publishes. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `olivaw-site1-bot-cleanix-3`, so robots keep their serial when containers are recreated.
+Here the counts are robots per type for site 1, 5 of each by default. Site 2 is fixed at 3 Rovo and 2 Cleanix in compose. Compose turns `CLEANIX_COUNT` into that many containers, up to the 50 host ports it publishes. To change the fleet size, change the counts and run the same command again. Serials come from the container name, like `robofleet-site1-bot-cleanix-3`, so robots keep their serial when containers are recreated.
 
 ## Config
 
