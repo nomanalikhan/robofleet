@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE TABLE IF NOT EXISTS sites (
     id                TEXT PRIMARY KEY,         -- 'site-1'
     last_sent_at      TIMESTAMPTZ NOT NULL,     -- gateway clock, when it sent its newest batch. The heartbeat.
-    backlog_readings  INTEGER NOT NULL,         -- readings still waiting on site after that batch
+    backlog_readings  INTEGER NOT NULL CHECK (backlog_readings >= 0), -- readings still waiting on site after that batch
     backlog_oldest_at TIMESTAMPTZ               -- oldest of those, NULL if none
 );
 
@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS robot_telemetry (
     robot_id    TEXT        NOT NULL REFERENCES robots (id),
     ts          TIMESTAMPTZ NOT NULL,            -- robot clock, when it was measured
     received_at TIMESTAMPTZ NOT NULL,            -- gateway clock, when it arrived on site
-    seq         INTEGER,                         -- Rovo only
-    battery_pct REAL        NOT NULL,
+    seq         BIGINT,                          -- Rovo only
+    battery_pct REAL        NOT NULL CHECK (battery_pct BETWEEN 0 AND 100),
     state       TEXT        NOT NULL CHECK (state IN ('idle', 'working', 'returning', 'charging', 'paused', 'error')),
     error       TEXT        CHECK (error IN ('wheel_stuck', 'bumper_hit', 'localization_lost')),
     x_m         REAL        NOT NULL,

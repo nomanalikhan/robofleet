@@ -1,6 +1,7 @@
 import gzip
 import json
 import re
+import zlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import get_args
@@ -54,9 +55,11 @@ def test_unknown_fields_are_ignored():
     [
         (b"not gzip", OSError),
         (gzip.compress(b"x" * 100)[:-8], EOFError),  # cut off in transit
+        (gzip.compress(b"x" * 100)[:10] + b"\xff" * 20, zlib.error),  # valid header, corrupt body
         (gzip.compress(b"{not json"), ValueError),
         (gzip.compress(json.dumps({"site_id": "site-1"}).encode()), ValueError),
         (batch(readings=[READING | {"state": "dancing"}]), ValueError),
+        (batch(readings=[READING | {"battery_pct": float("nan")}]), ValueError),
         (batch(readings=[READING | {"robot_id": "ghost"}]), ValueError),
     ],
 )

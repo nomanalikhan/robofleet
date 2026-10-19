@@ -4,7 +4,7 @@ import gzip
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Same values as the CHECKs in schema.sql, enforced by a test.
 State = Literal["idle", "working", "returning", "charging", "paused", "error"]
@@ -23,6 +23,8 @@ class Robot(BaseModel):
 
 class Reading(BaseModel):
     """Field order matches robot_telemetry columns. Epoch ms become datetimes."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
 
     robot_id: str
     ts: datetime = Field(validation_alias="ts_ms")

@@ -6,7 +6,7 @@ Each batch is one transaction that upserts the site and its robots and inserts t
 
 The [gateway README](../../site/gateway/README.md#forwarding-to-central) has the whole path of a reading as a diagram.
 
-The message is acked only after the commit, so a crash means redelivery and never loss. A batch that fails validation goes to `central.telemetry.dead` for inspection instead of blocking the queue. Any other error exits the process and Docker restarts it.
+The message is acked only after the commit, so a crash means redelivery and never loss. A batch that fails validation, or whose data the database refuses, goes to `central.telemetry.dead` for inspection instead of blocking the queue. Any other error, including a dropped broker connection, exits the process and Docker restarts it.
 
 ## Schema
 
