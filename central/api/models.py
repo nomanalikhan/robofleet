@@ -41,6 +41,23 @@ class RobotPage(BaseModel):
     total: int
 
 
+class ActivityPoint(BaseModel):
+    ts: datetime
+    battery_pct: float  # average across the site's robots
+    # How many robots were in each state, by their last reading in the bucket.
+    idle: int
+    working: int
+    returning: int
+    charging: int
+    paused: int
+    error: int
+
+
+class SiteActivity(BaseModel):
+    bucket_s: int
+    points: list[ActivityPoint]
+
+
 class TelemetryPoint(BaseModel):
     ts: datetime
     battery_pct: float

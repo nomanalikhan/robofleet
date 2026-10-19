@@ -126,6 +126,16 @@ def test_robot_filters_by_vendor_and_search(client):
     assert [r["id"] for r in robots(client, q="DOCK")["items"]] == ["rv-dock"]
 
 
+def test_site_activity_counts_robots_by_state(client):
+    a = client.get("/api/v1/sites/site-1/activity", params={"period": "hour"}).json()
+    assert a["bucket_s"] == 60
+    last = a["points"][-1]  # the newest minute, every site-1 robot with recent readings
+    assert (last["working"], last["idle"], last["charging"], last["error"]) == (2, 1, 1, 1)
+    day = client.get("/api/v1/sites/site-1/activity", params={"period": "day"}).json()
+    assert day["bucket_s"] == 300
+    assert client.get("/api/v1/sites/nowhere/activity").status_code == 404
+
+
 def test_telemetry_is_raw_for_short_ranges(client):
     t = telemetry(client)
     assert (t["bucket_s"], len(t["points"])) == (None, 40)
