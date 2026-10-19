@@ -19,6 +19,7 @@ class Site(BaseModel):
     backlog_readings: int
     backlog_oldest_at: datetime | None
     robots_by_status: dict[RobotStatus, int]
+    robots_by_vendor: dict[str, int]
 
 
 class Robot(BaseModel):

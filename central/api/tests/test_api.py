@@ -112,9 +112,9 @@ def test_filters_and_pagination(client):
 def test_sites(client):
     sites = {s["id"]: s for s in client.get("/api/v1/sites").json()}
     assert {i: s["status"] for i, s in sites.items()} == {"site-1": "online", "site-2": "offline", "site-3": "degraded"}
-    assert client.get("/api/v1/sites/site-1").json()["robots_by_status"] == {
-        "unknown": 0, "offline": 2, "error": 1, "stuck": 1, "low_battery": 1, "ok": 2,
-    }
+    site = client.get("/api/v1/sites/site-1").json()
+    assert site["robots_by_status"] == {"unknown": 0, "offline": 2, "error": 1, "stuck": 1, "low_battery": 1, "ok": 2}
+    assert site["robots_by_vendor"] == {"rovo": 6, "cleanix": 1}
 
 
 def telemetry(client, **params):
