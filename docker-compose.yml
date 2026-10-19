@@ -172,6 +172,53 @@ services:
     ports:
       - "9101-9150:8080"
 
+  # ---------- site 2 ----------
+  # A smaller second site, same software. Nothing is published to the host.
+  site2-mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    restart: unless-stopped
+    volumes:
+      - ./site/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  site2-gateway:
+    image: olivaw/gateway:dev
+    restart: unless-stopped
+    build: ./site/gateway
+    environment:
+      SITE_ID: site-2
+      MQTT_HOST: site2-mosquitto
+      CLEANIX_DISCOVERY: site2-bot-cleanix:8080
+      AMQP_URL: amqp://olivaw:olivaw@central-rabbitmq:5672/
+    volumes:
+      - site2-gateway-data:/data
+    depends_on:
+      site2-mosquitto:
+        condition: service_healthy
+
+  site2-bot-rovo:
+    <<: *botsim
+    environment:
+      <<: *botsim-env
+      MQTT_URL: tcp://site2-mosquitto:1883
+      ROVO_COUNT: 3
+    depends_on:
+      site2-mosquitto:
+        condition: service_healthy
+
+  site2-bot-cleanix:
+    <<: *botsim
+    environment:
+      <<: *botsim-env
+      CLEANIX_COUNT: 1
+    deploy:
+      replicas: 2
+
 volumes:
   site1-gateway-data:
+  site2-gateway-data:
   central-db-data:
