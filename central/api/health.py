@@ -32,7 +32,9 @@ SITES = """
 
 ROBOTS = """
     SELECT r.id, r.site_id, r.vendor, t.state, t.error, t.battery_pct, t.x_m, t.y_m,
-           extract(epoch FROM delivered - t.received_at)::real AS last_seen_s,
+           -- greatest() skips nulls, so a never heard from robot must stay null itself.
+           CASE WHEN t.received_at IS NOT NULL
+                THEN greatest(0, extract(epoch FROM delivered - t.received_at))::real END AS last_seen_s,
            h.status, h.problems, count(*) OVER () AS total
     FROM robots r
     JOIN sites s ON s.id = r.site_id
@@ -52,7 +54,8 @@ ROBOTS = """
                AND max(ts) - min(ts) >= 0.8 * $3 * INTERVAL '1 second'
                AND sqrt(power(max(x_m) - min(x_m), 2) + power(max(y_m) - min(y_m), 2)) < $4 AS stuck
         FROM robot_telemetry
-        WHERE robot_id = r.id AND ts > t.ts - $3 * INTERVAL '1 second'
+        WHERE t.state = 'working'
+          AND robot_id = r.id AND ts BETWEEN t.ts - $3 * INTERVAL '1 second' AND t.ts
     ) w ON true
     -- A dark site makes its robots unknown, one site alert instead of one per
     -- robot. An offline robot's reading is stale, so it gets no other problems.
@@ -72,10 +75,10 @@ ROBOTS = """
     WHERE ($6::text[] IS NULL OR r.site_id = ANY($6))
       AND ($7::text IS NULL OR r.id = $7)
       AND ($8::text[] IS NULL OR h.status = ANY($8))
-      AND ($11::text[] IS NULL OR r.vendor = ANY($11))
-      AND ($12::text IS NULL OR r.id ILIKE '%' || $12 || '%')
+      AND ($9::text[] IS NULL OR r.vendor = ANY($9))
+      AND ($10::text IS NULL OR strpos(lower(r.id), lower($10)) > 0)
     ORDER BY array_position($5::text[], h.status), r.id
-    LIMIT $9 OFFSET $10
+    LIMIT $11 OFFSET $12
 """
 
 
@@ -95,5 +98,5 @@ async def robots(
 ) -> list[asyncpg.Record]:
     return await db.fetch(
         ROBOTS, OFFLINE_S, LOW_BATTERY_PCT, STUCK_S, STUCK_M, SEVERITY,
-        site_ids, robot_id, statuses, limit, offset, vendors, q,
+        site_ids, robot_id, statuses, vendors, q, limit, offset,
     )

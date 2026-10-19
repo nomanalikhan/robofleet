@@ -11,7 +11,7 @@ PERIODS = {
     "month": timedelta(days=30),
 }
 RAW_UP_TO = timedelta(hours=1)
-BUCKETS_S = [60, 300, 1800, 7200, 21600]  # the smallest that keeps a chart near MAX_POINTS wins
+BUCKETS_S = [60, 300, 1800, 7200]  # the smallest that keeps a chart near MAX_POINTS wins
 MAX_POINTS = 400
 MAX_RANGE = timedelta(days=31)  # history is kept 30 days
 

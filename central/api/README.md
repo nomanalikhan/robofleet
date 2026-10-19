@@ -9,7 +9,7 @@ Read-only FastAPI service over central TimescaleDB. It answers what every site a
 | `GET` | `/api/v1/sites/{site_id}/activity?period=` | How many robots were in each state per bucket, plus average battery, over the last `hour`, `day`, `week` or `month` |
 | `GET` | `/api/v1/robots?site_id=&status=&vendor=&q=&limit=&offset=` | Robots with their newest reading and health, worst first, paginated. Repeat a filter to match any of its values. |
 | `GET` | `/api/v1/robots/{robot_id}` | One robot |
-| `GET` | `/api/v1/robots/{robot_id}/telemetry?period=` | Chart data for the last `hour`, `day`, `week` or `month`, or any `from`/`to` range up to 31 days |
+| `GET` | `/api/v1/robots/{robot_id}/telemetry?period=` | Chart data for the last `hour`, `day`, `week` or `month`, or any `from`/`to` range up to 31 days. Times need a timezone. A known robot with no readings gets an empty list, an unknown one a 404. |
 | `GET` | `/health` | `ok` when the database answers |
 
 Routes live in [sites.py](sites.py) and [robots.py](robots.py), the health rules in [health.py](health.py) and the response shapes in [models.py](models.py).

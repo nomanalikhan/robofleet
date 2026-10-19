@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import AwareDatetime
 
 import health
 from db import Db
@@ -16,19 +17,20 @@ router = APIRouter(prefix="/robots", tags=["robots"])
 @router.get("")
 async def list_robots(
     db: Db,
-    site_id: Annotated[list[str], Query()] = [],
-    status: Annotated[list[RobotStatus], Query()] = [],
-    vendor: Annotated[list[str], Query()] = [],
+    site_id: Annotated[list[str], Query(default_factory=list)],
+    status: Annotated[list[RobotStatus], Query(default_factory=list)],
+    vendor: Annotated[list[str], Query(default_factory=list)],
     q: Annotated[str | None, Query(description="part of the robot id")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RobotPage:
     """Robots with their newest reading and health, worst problems first.
     Repeat `site_id`, `status` or `vendor` to match any of several values."""
-    rows = await health.robots(
-        db, site_ids=site_id or None, statuses=status or None, vendors=vendor or None, q=q, limit=limit, offset=offset,
-    )
-    return RobotPage(items=[Robot(**r) for r in rows], total=rows[0]["total"] if rows else 0)
+    filters = dict(site_ids=site_id or None, statuses=status or None, vendors=vendor or None, q=q)
+    rows = await health.robots(db, **filters, limit=limit, offset=offset)
+    # count(*) OVER () sees nothing on an empty page, so a page past the end asks the first one.
+    counted = rows if rows or not offset else await health.robots(db, **filters, limit=1)
+    return RobotPage(items=[Robot(**r) for r in rows], total=counted[0]["total"] if counted else 0)
 
 
 @router.get("/{robot_id}")
@@ -44,13 +46,15 @@ async def get_telemetry(
     robot_id: str,
     db: Db,
     period: Period | None = None,
-    start: Annotated[datetime | None, Query(alias="from")] = None,
-    end: Annotated[datetime | None, Query(alias="to")] = None,
+    start: Annotated[AwareDatetime | None, Query(alias="from")] = None,
+    end: Annotated[AwareDatetime | None, Query(alias="to")] = None,
 ) -> Telemetry:
     """Chart data for one robot. Use `period` for the last hour, day, week or
     month, or `from` and `to` for any range up to 31 days. Defaults to the last
     15 minutes. Up to an hour returns raw readings, longer ranges are averaged
     into buckets so a chart stays around 400 points."""
+    if period and (start or end):
+        raise HTTPException(422, "give either period or from/to, not both")
     end = end or datetime.now(UTC)
     start = start or end - (PERIODS[period] if period else timedelta(minutes=15))
     if not timedelta(0) < end - start <= MAX_RANGE:

@@ -13,7 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from models import Error, State
-from robots import bucket_for
+from periods import bucket_for
 
 ADMIN_URL = os.environ["TEST_ADMIN_URL"]  # any database on the server, used to create fleet_test
 TEST_URL = ADMIN_URL.rsplit("/", 1)[0] + "/fleet_test"
@@ -31,7 +31,8 @@ INSERT INTO sites (id, last_sent_at, backlog_readings, backlog_oldest_at) VALUES
 INSERT INTO robots (id, site_id, vendor) VALUES
     ('rv-ok', 'site-1', 'rovo'), ('rv-low', 'site-1', 'rovo'), ('rv-err', 'site-1', 'rovo'),
     ('rv-stuck', 'site-1', 'rovo'), ('rv-off', 'site-1', 'rovo'), ('cx-new', 'site-1', 'cleanix'),
-    ('rv-dock', 'site-1', 'rovo'), ('cx-dark', 'site-2', 'cleanix'), ('rv-lag', 'site-3', 'rovo');
+    ('rv-dock', 'site-1', 'rovo'), ('cx-dark', 'site-2', 'cleanix'), ('rv-lag', 'site-3', 'rovo'),
+    ('rv-stuck-low', 'site-1', 'rovo');
 
 INSERT INTO robot_telemetry (robot_id, ts, received_at, battery_pct, state, error, x_m, y_m, heading_rad)
 SELECT robot_id, now() - (newest + i) * INTERVAL '1 second', now() - (newest + i) * INTERVAL '1 second',
@@ -42,6 +43,7 @@ FROM (VALUES
     ('rv-dock',  0,   10, 'charging', NULL,         1, 0),
     ('rv-err',   0,   50, 'error',    'bumper_hit', 0, 0),
     ('rv-stuck', 0,   60, 'working',  NULL,         3, 0),
+    ('rv-stuck-low', 0, 10, 'working', NULL,         3, 0),
     ('rv-off',   120, 70, 'working',  NULL,         0, 0.5),
     ('cx-dark',  0,   90, 'working',  NULL,         0, 0.5),
     ('rv-lag',   610, 70, 'working',  NULL,         0, 0.5)
@@ -88,6 +90,7 @@ def test_health_rules_worst_first(client):
         ("rv-off", "offline"),
         ("rv-err", "error"),
         ("rv-stuck", "stuck"),
+        ("rv-stuck-low", "stuck"),
         ("rv-low", "low_battery"),
         ("rv-dock", "ok"),  # low but already charging
         ("rv-lag", "ok"),  # behind only because its site is catching up
@@ -105,7 +108,7 @@ def test_filters_and_pagination(client):
     assert robots(client, site_id="site-2")["total"] == 1
     assert [r["id"] for r in robots(client, status="offline")["items"]] == ["cx-new", "rv-off"]
     page = robots(client, limit=2, offset=2)
-    assert page["total"] == 9
+    assert page["total"] == 10
     assert [r["id"] for r in page["items"]] == ["rv-off", "rv-err"]
 
 
@@ -113,8 +116,8 @@ def test_sites(client):
     sites = {s["id"]: s for s in client.get("/api/v1/sites").json()}
     assert {i: s["status"] for i, s in sites.items()} == {"site-1": "online", "site-2": "offline", "site-3": "degraded"}
     site = client.get("/api/v1/sites/site-1").json()
-    assert site["robots_by_status"] == {"unknown": 0, "offline": 2, "error": 1, "stuck": 1, "low_battery": 1, "ok": 2}
-    assert site["robots_by_vendor"] == {"rovo": 6, "cleanix": 1}
+    assert site["robots_by_status"] == {"unknown": 0, "offline": 2, "error": 1, "stuck": 2, "low_battery": 1, "ok": 2}
+    assert site["robots_by_vendor"] == {"rovo": 7, "cleanix": 1}
 
 
 def telemetry(client, **params):
@@ -128,14 +131,14 @@ def test_robot_filters_by_vendor_and_search(client):
 
 def test_robot_filters_take_several_values(client):
     assert robots(client, site_id=["site-2", "site-3"])["total"] == 2
-    assert [r["id"] for r in robots(client, status=["error", "stuck"])["items"]] == ["rv-err", "rv-stuck"]
+    assert [r["id"] for r in robots(client, status=["error", "stuck"])["items"]] == ["rv-err", "rv-stuck", "rv-stuck-low"]
 
 
 def test_site_activity_counts_robots_by_state(client):
     a = client.get("/api/v1/sites/site-1/activity", params={"period": "hour"}).json()
     assert a["bucket_s"] == 60
     last = a["points"][-1]  # the newest minute, every site-1 robot with recent readings
-    assert (last["working"], last["idle"], last["charging"], last["error"]) == (2, 1, 1, 1)
+    assert (last["working"], last["idle"], last["charging"], last["error"]) == (3, 1, 1, 1)
     day = client.get("/api/v1/sites/site-1/activity", params={"period": "day"}).json()
     assert day["bucket_s"] == 300
     assert client.get("/api/v1/sites/nowhere/activity").status_code == 404
@@ -192,6 +195,30 @@ def test_bad_parameters_are_422(client):
     too_long = {"from": (now - timedelta(days=40)).isoformat(), "to": now.isoformat()}
     assert client.get("/api/v1/robots/rv-ok/telemetry", params=too_long).status_code == 422
     assert client.get("/api/v1/robots/rv-ok/telemetry", params={"period": "year"}).status_code == 422
+    naive = {"from": (datetime.now() - timedelta(hours=1)).isoformat(), "to": datetime.now().isoformat()}
+    assert client.get("/api/v1/robots/rv-ok/telemetry", params=naive).status_code == 422
+    both = {"period": "day", "to": now.isoformat()}
+    assert client.get("/api/v1/robots/rv-ok/telemetry", params=both).status_code == 422
+
+
+def test_page_past_the_end_keeps_the_total(client):
+    page = robots(client, offset=50)
+    assert (page["items"], page["total"]) == ([], 10)
+
+
+def test_search_is_literal(client):
+    assert robots(client, q="%")["total"] == 0
+
+
+def test_robot_without_readings_has_empty_telemetry(client):
+    r = client.get("/api/v1/robots/cx-new/telemetry")
+    assert (r.status_code, r.json()["points"]) == (200, [])
+    assert client.get("/api/v1/robots/cx-new").json()["last_seen_s"] is None
+
+
+def test_problems_list_every_rule_that_fires(client):
+    assert client.get("/api/v1/robots/rv-stuck-low").json()["problems"] == ["stuck", "low_battery"]
+    assert client.get("/api/v1/robots/rv-ok").json()["problems"] == []  # working, but moving
 
 
 def test_state_and_error_values_match_the_schema():
