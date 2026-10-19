@@ -2,11 +2,11 @@
 
 Robots at several sites report their state once a second. This repo gets that data from each site to a central system, stores it and shows a fleet manager what the fleet is doing right now and what it did before.
 
-All three parts of the brief are built and run with one command. Simulated robots from two vendors feed a gateway on each site, the gateway forwards every reading to central, and central stores it, derives health and serves a web UI.
+All three parts of the brief are built and run with one command. Simulated robots from two vendors feed a gateway on each site, the gateway forwards every reading to central and central stores it, derives health and serves a web UI.
 
 ![Olivaw architecture. Robots on each site feed a gateway, which forwards batches over AMQP to central RabbitMQ, ingest, TimescaleDB, the Fleet API and the web UI.](architecture.png)
 
-For an interactive version you can zoom and trace paths in, open [architecture.html](architecture.html) in a browser.
+For an interactive version you can zoom and trace paths in, open [docs/architecture.html](docs/architecture.html) in a browser. It is generated from the same source as the image.
 
 ## Run
 
@@ -29,7 +29,7 @@ Two sites start. `site-1` has 5 Rovo and 5 Cleanix robots, `site-2` has 3 and 2.
 make test
 ```
 
-That runs the Go and Python tests inside the service images, so nothing needs installing locally. The API tests need `central-db` running.
+That runs the Go and Python tests inside the service images, so nothing needs installing locally. The API tests need `central-db` running. Only `make web-api`, which regenerates the UI client, needs npm on the host.
 
 ## What is in the repo
 
@@ -64,6 +64,7 @@ That runs the Go and Python tests inside the service images, so nothing needs in
 - **Commands.** Designed but not built. The plan is a durable queue per site, `site.{id}.commands`, consumed over the gateway's existing outbound connection, with a 60s expiry so a command never runs late and command ids remembered so a redelivery never runs twice. The robots in botsim already accept commands and the vendor command formats are in the [botsim README](simulator/botsim/README.md#wire-formats). Left out to spend the time on getting data in reliably and showing it well.
 - **Positions.** Robots report positions in their own map frame. There are no floor plans, so the floor map just fits the points it gets.
 - **Security.** No auth, no TLS, one shared demo user on RabbitMQ and plain text credentials in compose.
+- **UI tests.** The simulator, gateway, ingest and API have tests and `make test` runs them. The UI has type checking and lint only. Its logic is thin and the API it renders is tested, so UI tests were the first thing cut.
 
 ## With more time or in production
 

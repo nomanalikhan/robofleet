@@ -132,8 +132,8 @@ services:
       timeout: 5s
       retries: 10
 
-  # The only link between this site's robots and central. Telemetry goes up,
-  # commands come down.
+  # The only link between this site's robots and central. Telemetry goes up.
+  # Commands down are designed but not built.
   site1-gateway:
     image: olivaw/gateway:dev
     restart: unless-stopped
@@ -173,7 +173,8 @@ services:
       - "9101-9150:8080"
 
   # ---------- site 2 ----------
-  # A smaller second site, same software. Nothing is published to the host.
+  # A smaller second site, same software. Nothing is published to the host,
+  # site 1 already exposes one broker and one set of Cleanix ports for curl.
   site2-mosquitto:
     image: eclipse-mosquitto:2.0.20
     restart: unless-stopped
