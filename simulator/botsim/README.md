@@ -2,7 +2,7 @@
 
 Simulated robots for one site, from two fictional vendors. Field names, units and transports differ on purpose so the site gateway has real normalization work to do. Wire formats are [below](#wire-formats).
 
-Compose runs the same image twice.
+Compose runs the same image twice per site. For site 1 these are the following.
 
 - `site1-bot-rovo` is one container with `ROVO_COUNT` robots. Each robot is a goroutine with its own MQTT connection that pushes telemetry.
 - `site1-bot-cleanix` is one container per robot, so each robot has its own IP and HTTP server on port 8080 that has to be polled. Resolving the service name `site1-bot-cleanix` returns every robot's IP, which is how the site gateway discovers them here.
